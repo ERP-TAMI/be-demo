@@ -1,112 +1,109 @@
 # ERP Backend — NestJS
 
-Backend ERP system được xây dựng bằng **NestJS** + **TypeORM** + **PostgreSQL**.
+Backend được xây dựng bằng **NestJS** + **TypeORM** + **PostgreSQL**.
 
 ---
 
-## Yêu cầu
+## Yêu cầu cài đặt
 
 - [Node.js](https://nodejs.org/) >= 20
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) — để chạy PostgreSQL
 
 ---
 
-## 1. Cài đặt lần đầu
+## Bắt đầu lần đầu (clone về xong làm theo thứ tự này)
+
+### Bước 1 — Cài dependencies
 
 ```bash
-# Cài dependencies
 npm install
+```
 
-# Tạo file cấu hình môi trường
+### Bước 2 — Tạo file cấu hình
+
+```bash
 cp .env.example .env
 ```
 
-> Mở `.env` và chỉnh `DB_PASSWORD` nếu cần (mặc định là `postgres`).
+Mở file `.env` vừa tạo, mặc định không cần chỉnh gì cả.
 
----
+### Bước 3 — Khởi động Database bằng Docker
 
-## 2. Khởi động Database (PostgreSQL qua Docker)
+> Docker Desktop phải đang chạy trước khi làm bước này.  
+> Mở Docker Desktop, chờ nó khởi động xong (icon dưới taskbar không còn loading).
 
 ```bash
 npm run db:up
 ```
 
-Lệnh này kéo image PostgreSQL 16 Alpine và khởi động container `erp_postgres` tại port **5433**.
+Lệnh này tự động tải PostgreSQL về và chạy. Lần đầu tải hơi lâu, chờ xong sẽ thấy:
 
-Kiểm tra container đã chạy chưa:
+```
+Container erp_postgres  Started
+```
+
+Kiểm tra DB đã chạy chưa:
 
 ```bash
 docker ps
-# erp_postgres   Up X seconds (healthy)   0.0.0.0:5433->5432/tcp
 ```
 
-Các lệnh quản lý DB khác:
+Kết quả mong muốn — cột STATUS phải là `healthy`:
 
-```bash
-npm run db:down    # Tắt container (data vẫn còn)
-npm run db:reset   # Xóa toàn bộ data và khởi động lại từ đầu
+```
+NAMES          STATUS                    PORTS
+erp_postgres   Up 30 seconds (healthy)   0.0.0.0:5433->5432/tcp
 ```
 
----
-
-## 3. Chạy Backend
+### Bước 4 — Chạy backend
 
 ```bash
-# Development (hot reload)
 npm run start:dev
-
-# Production
-npm run build
-npm run start:prod
 ```
 
-API chạy tại: `http://localhost:3000/api/v1`
+API chạy tại: `http://localhost:8002/api/v1`
 
 ---
 
-## 4. Migration — Ghi lại mọi thay đổi DB
+## Quản lý Docker hàng ngày
 
-> **Quy tắc bắt buộc:** Mọi thay đổi schema đều phải có migration file đi kèm.
-> Không bao giờ dùng `synchronize: true`.
+| Lệnh | Khi nào dùng |
+|------|-------------|
+| `npm run db:up` | Mở máy lên, muốn chạy backend |
+| `npm run db:down` | Tắt máy hoặc không cần DB nữa (data vẫn còn) |
+| `npm run db:reset` | Muốn xóa toàn bộ data, tạo DB trắng từ đầu |
+
+> **Lưu ý:** Tắt máy mà không chạy `db:down` thì lần sau bật lại phải chạy `db:up` lại.
+
+---
+
+## Migration — Ghi lại thay đổi DB
+
+> **Quy tắc bắt buộc:** Mọi thay đổi schema (thêm bảng, thêm cột, đổi kiểu dữ liệu...) đều phải tạo migration file và commit lên git cùng với code.  
+> Không bao giờ chỉnh DB tay hoặc bật `synchronize: true`.
 
 ### Quy trình khi thay đổi DB
 
-**Bước 1** — Sửa hoặc tạo entity trong `src/features/<tên>/entities/*.entity.ts`
+**Bước 1** — Sửa entity, ví dụ thêm cột `phone` vào User:
 
 ```ts
-// Ví dụ: thêm column phone vào User entity
+// src/features/user/entities/user.entity.ts
 @Column({ nullable: true })
 phone: string;
 ```
 
-**Bước 2** — Generate migration (TypeORM tự so sánh entity với DB hiện tại)
+**Bước 2** — Generate migration (đặt tên mô tả thay đổi):
 
 ```bash
 npm run migration:generate -- src/database/migrations/AddPhoneToUser
 ```
 
-File mới xuất hiện tại `src/database/migrations/`, ví dụ:
+File mới sẽ tự động tạo trong `src/database/migrations/`, ví dụ:  
 `1712345678901-AddPhoneToUser.ts`
 
-**Bước 3** — Review file migration vừa tạo
+**Bước 3** — Mở file migration vừa tạo, kiểm tra nội dung có đúng không
 
-```ts
-// UP — thay đổi sẽ áp dụng lên DB
-public async up(queryRunner: QueryRunner): Promise<void> { ... }
-
-// DOWN — rollback nếu cần
-public async down(queryRunner: QueryRunner): Promise<void> { ... }
-```
-
-**Bước 4** — Chạy migration
-
-```bash
-npm run migration:run
-```
-
-> Khi app khởi động bằng `npm run start:dev`, migration cũng tự chạy nhờ `migrationsRun: true`.
-
-**Bước 5** — Commit cả entity lẫn migration vào git
+**Bước 4** — Commit cả entity lẫn migration vào git:
 
 ```bash
 git add src/features/user/entities/user.entity.ts
@@ -114,31 +111,16 @@ git add src/database/migrations/1712345678901-AddPhoneToUser.ts
 git commit -m "feat(user): add phone column"
 ```
 
----
+> Migration sẽ tự chạy lên DB khi khởi động app (`npm run start:dev`).
 
-### Bảng lệnh migration
+### Các lệnh migration
 
 | Lệnh | Mô tả |
 |------|-------|
-| `npm run migration:generate -- src/database/migrations/TenMigration` | Tạo migration từ thay đổi entity |
-| `npm run migration:run` | Chạy tất cả migration chưa áp dụng |
+| `npm run migration:generate -- src/database/migrations/TenMoTa` | Tạo migration từ thay đổi entity |
+| `npm run migration:run` | Chạy thủ công các migration chưa được áp dụng |
 | `npm run migration:revert` | Rollback migration gần nhất |
-| `npm run migration:show` | Xem danh sách và trạng thái migration |
-
----
-
-## 5. Tạo Feature Module mới
-
-```bash
-npx nest g module features/ten-module
-npx nest g controller features/ten-module
-npx nest g service features/ten-module
-```
-
-Sau đó:
-1. Tạo entity: `src/features/ten-module/entities/ten-module.entity.ts`
-2. Generate migration: `npm run migration:generate -- src/database/migrations/CreateTenModule`
-3. Chạy: `npm run migration:run`
+| `npm run migration:show` | Xem danh sách migration và trạng thái |
 
 ---
 
@@ -146,12 +128,12 @@ Sau đó:
 
 ```
 src/
-├── app.module.ts                  # Root module
-├── main.ts                        # Bootstrap (prefix, pipes, CORS)
+├── app.module.ts
+├── main.ts
 ├── database/
-│   ├── database.module.ts         # TypeORM connection config
-│   ├── data-source.ts             # DataSource cho migration CLI
-│   └── migrations/                # Tất cả migration files (commit vào git)
-├── features/                      # Các feature module (user, product, ...)
+│   ├── database.module.ts         # Cấu hình kết nối DB
+│   ├── data-source.ts             # Dùng cho lệnh migration CLI
+│   └── migrations/                # Tất cả migration files — phải commit vào git
+├── features/                      # Các module nghiệp vụ (user, product, ...)
 └── common/                        # Guards, interceptors, decorators dùng chung
 ```
