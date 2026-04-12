@@ -124,6 +124,29 @@ git commit -m "feat(user): add phone column"
 
 ---
 
+## Tài khoản mặc định (Seed Data)
+
+Sau khi chạy `npm run seed`, các tài khoản sau sẽ được tạo:
+
+| Email | Mật khẩu | Role | Ghi chú |
+|-------|----------|------|---------|
+| `itadmin@erp.com` | `Admin@123` | IT Admin | Quản lý tài khoản, có thể đăng nhập ngay |
+| `sa@erp.com` | `Admin@123` | Super Admin | Toàn quyền hệ thống |
+| `tpkh@erp.com` | `Admin@123` | TP Kế hoạch | Phải đổi mật khẩu lần đầu |
+| `nvkh@erp.com` | `Admin@123` | NV Kế hoạch | Phải đổi mật khẩu lần đầu |
+| `rd@erp.com` | `Admin@123` | R&D | Phải đổi mật khẩu lần đầu |
+| `kt@erp.com` | `Admin@123` | Kế toán | Phải đổi mật khẩu lần đầu |
+
+> **Lưu ý:** Tài khoản `itadmin` và `sa` đã được set `mustChangePassword = false` nên có thể dùng ngay.  
+> Các tài khoản còn lại sẽ bị chuyển sang trang đổi mật khẩu khi đăng nhập lần đầu.
+
+```bash
+# Chạy seed (chỉ cần làm 1 lần sau khi db:up)
+npm run seed
+```
+
+---
+
 ## Cấu trúc thư mục
 
 ```
