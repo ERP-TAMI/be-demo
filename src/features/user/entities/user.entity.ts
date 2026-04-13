@@ -72,6 +72,23 @@ export class User {
   })
   lastLoginAt: Date;
 
+  // ── Forgot Password OTP ──────────────────────────────────
+  @Column({
+    type: 'varchar',
+    length: 6,
+    nullable: true,
+    name: 'reset_otp',
+  })
+  resetOtp: string | null;
+
+  @Column({
+    type: 'timestamptz',
+    nullable: true,
+    name: 'reset_otp_expires_at',
+  })
+  resetOtpExpiresAt: Date | null;
+
+  // ─────────────────────────────────────────────────────────
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 

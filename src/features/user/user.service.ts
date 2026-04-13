@@ -63,4 +63,39 @@ export class UserService {
       mustChangePassword: false,
     });
   }
+
+  // ── Forgot Password OTP helpers ──────────────────────────
+
+  /**
+   * Lưu OTP reset vào DB với TTL 10 phút
+   */
+  async saveResetOtp(userId: string, otp: string): Promise<void> {
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 phút
+    await this.userRepository.update(userId, {
+      resetOtp: otp,
+      resetOtpExpiresAt: expiresAt,
+    });
+  }
+
+  /**
+   * Tìm user theo email VÀ OTP còn hạn.
+   * Trả null nếu không tìm thấy, OTP sai, hoặc OTP đã hết hạn.
+   */
+  async findByEmailWithValidOtp(email: string, otp: string): Promise<User | null> {
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) return null;
+    if (!user.resetOtp || user.resetOtp !== otp) return null;
+    if (!user.resetOtpExpiresAt || user.resetOtpExpiresAt < new Date()) return null;
+    return user;
+  }
+
+  /**
+   * Xóa OTP sau khi đã dùng (hoặc thất bại nhiều lần)
+   */
+  async clearResetOtp(userId: string): Promise<void> {
+    await this.userRepository.update(userId, {
+      resetOtp: null,
+      resetOtpExpiresAt: null,
+    });
+  }
 }
