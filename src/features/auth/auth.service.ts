@@ -9,7 +9,11 @@ import * as bcrypt from 'bcrypt';
 import { UserService } from '../user/user.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 import { User, UserStatus } from '../user/entities/user.entity.js';
+import { MailService } from '../../mail/mail.service.js';
 
 export interface JwtPayload {
   sub: string;
@@ -35,6 +39,7 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
+    private readonly mailService: MailService,
   ) {}
 
   /**
@@ -84,27 +89,7 @@ export class AuthService {
     await this.userService.updateLoginSuccess(user.id);
 
     // 6. Ký JWT
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      mustChangePassword: user.mustChangePassword,
-    };
-
-    const accessToken = this.jwtService.sign(payload);
-
-    // 7. Trả về response
-    return {
-      accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        mustChangePassword: user.mustChangePassword,
-      },
-    };
+    return this.signTokenAndBuildResponse(user, user.mustChangePassword);
   }
 
   /**
@@ -130,27 +115,78 @@ export class AuthService {
     // Cập nhật DB
     await this.userService.updatePassword(userId, newHash);
 
-    // Ký JWT mới (với mustChangePassword = false)
-    const payload: JwtPayload = {
-      sub: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      mustChangePassword: false,
+    return this.signTokenAndBuildResponse(user, false);
+  }
+
+  /**
+   * API POST /auth/forgot-password  — Public
+   * Gửi OTP 6 số về email (nếu tồn tại)
+   * Luôn trả 200 dù email có tồn tại hay không (bảo mật — không lộ thông tin)
+   */
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const SAFE_RESPONSE = {
+      message: 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi.',
     };
 
-    const accessToken = this.jwtService.sign(payload);
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user || user.status === UserStatus.INACTIVE) {
+      // Không throw — trả response giống như thành công
+      return SAFE_RESPONSE;
+    }
 
-    return {
-      accessToken,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        mustChangePassword: false,
-      },
-    };
+    // Tạo OTP 6 số ngẫu nhiên
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Lưu vào DB (TTL 10 phút)
+    await this.userService.saveResetOtp(user.id, otp);
+
+    // Gửi email (fire-and-forget — lỗi email không block response)
+    this.mailService
+      .sendForgotPasswordEmail({ to: user.email, fullName: user.fullName, otp })
+      .catch(() => {});
+
+    return SAFE_RESPONSE;
+  }
+
+  /**
+   * API POST /auth/verify-otp — Public
+   * Chỉ kiểm tra OTP có hợp lệ không, không thay đổi mật khẩu
+   * Dùng cho bước 2a ở FE: user nhập OTP trước, FE verify, rồi mới cho nhập MK mới
+   */
+  async verifyOtp(dto: VerifyOtpDto): Promise<{ valid: boolean }> {
+    const user = await this.userService.findByEmailWithValidOtp(dto.email, dto.otp);
+    if (!user) {
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    }
+    return { valid: true };
+  }
+
+  /**
+   * API POST /auth/reset-password — Public
+   * Xác thực OTP và đặt lại mật khẩu mới
+   */
+  async resetPassword(dto: ResetPasswordDto): Promise<LoginResponse> {
+    if (dto.newPassword !== dto.confirmPassword) {
+      throw new BadRequestException('Mật khẩu xác nhận không khớp');
+    }
+
+    // Tìm user với OTP hợp lệ
+    const user = await this.userService.findByEmailWithValidOtp(dto.email, dto.otp);
+    if (!user) {
+      throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
+    }
+
+    // Hash mật khẩu mới
+    const salt = await bcrypt.genSalt(10);
+    const newHash = await bcrypt.hash(dto.newPassword, salt);
+
+    // Cập nhật mật khẩu + tắt must_change_password
+    await this.userService.updatePassword(user.id, newHash);
+
+    // Xóa OTP đã dùng
+    await this.userService.clearResetOtp(user.id);
+
+    return this.signTokenAndBuildResponse(user, false);
   }
 
   /**
@@ -162,5 +198,27 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return user;
+  }
+
+  // ── Private helper ─────────────────────────────────────────
+  private signTokenAndBuildResponse(user: User, mustChangePassword: boolean): LoginResponse {
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      mustChangePassword,
+    };
+    const accessToken = this.jwtService.sign(payload);
+    return {
+      accessToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        mustChangePassword,
+      },
+    };
   }
 }

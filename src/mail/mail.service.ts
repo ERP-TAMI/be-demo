@@ -159,4 +159,69 @@ export class MailService {
       this.logger.error(`Failed to send reset email to ${to}`, error.message);
     }
   }
+
+  /**
+   * Gửi OTP khi user tự yêu cầu quên mật khẩu
+   */
+  async sendForgotPasswordEmail(options: {
+    to: string;
+    fullName: string;
+    otp: string;
+  }): Promise<void> {
+    const { to, fullName, otp } = options;
+
+    const html = `
+<!DOCTYPE html>
+<html lang="vi">
+<head><meta charset="UTF-8"></head>
+<body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,sans-serif;">
+  <div style="max-width:560px;margin:40px auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
+    <div style="background:#2563eb;padding:28px 32px;">
+      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:700;">ERP May Tấn Minh</h1>
+      <p style="margin:4px 0 0;color:#bfdbfe;font-size:14px;">Đặt lại mật khẩu</p>
+    </div>
+    <div style="padding:32px;">
+      <h2 style="margin:0 0 8px;color:#111827;font-size:18px;">Xin chào, ${fullName}!</h2>
+      <p style="margin:0 0 24px;color:#6b7280;font-size:14px;line-height:1.6;">
+        Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản <strong>${to}</strong>.
+        Sử dụng mã OTP bên dưới để tiếp tục.
+      </p>
+
+      <div style="background:#eff6ff;border:2px solid #bfdbfe;border-radius:12px;padding:28px;text-align:center;margin-bottom:24px;">
+        <p style="margin:0 0 8px;font-size:13px;color:#3b82f6;font-weight:600;text-transform:uppercase;letter-spacing:1px;">Mã xác nhận OTP</p>
+        <div style="font-size:40px;font-weight:800;letter-spacing:12px;color:#1d4ed8;font-family:monospace;">${otp}</div>
+        <p style="margin:12px 0 0;font-size:13px;color:#6b7280;">
+          ⏱ Mã có hiệu lực trong <strong>10 phút</strong>
+        </p>
+      </div>
+
+      <div style="background:#fef9c3;border-left:4px solid #eab308;padding:12px 16px;border-radius:4px;margin-bottom:24px;">
+        <p style="margin:0;font-size:13px;color:#713f12;">
+          🔒 Nếu bạn <strong>không</strong> yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.
+          Mật khẩu hiện tại của bạn sẽ không bị thay đổi.
+        </p>
+      </div>
+    </div>
+    <div style="border-top:1px solid #f3f4f6;padding:20px 32px;text-align:center;">
+      <p style="margin:0;font-size:12px;color:#9ca3af;">
+        Email này được gửi tự động từ hệ thống ERP. Vui lòng không trả lời email này.
+      </p>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    try {
+      await this.transporter.sendMail({
+        from: this.configService.get<string>('MAIL_FROM'),
+        replyTo: this.configService.get<string>('MAIL_REPLY_TO'),
+        to,
+        subject: '[ERP May] Mã OTP đặt lại mật khẩu',
+        html,
+      });
+      this.logger.log(`Forgot-password OTP email sent to ${to}`);
+    } catch (error) {
+      this.logger.error(`Failed to send OTP email to ${to}`, error.message);
+    }
+  }
 }
