@@ -63,7 +63,10 @@ export class AuthService {
     }
 
     // 3. So sánh mật khẩu
-    const isPasswordValid = await bcrypt.compare(dto.password, user.passwordHash);
+    const isPasswordValid = await bcrypt.compare(
+      dto.password,
+      user.passwordHash,
+    );
     if (!isPasswordValid) {
       // Tăng login fail count
       await this.userService.incrementLoginFail(user.id, user.loginFailedCount);
@@ -96,7 +99,10 @@ export class AuthService {
    * API PATCH /auth/change-password
    * Protected bởi JwtAuthGuard — user đã đăng nhập
    */
-  async changePassword(userId: string, dto: ChangePasswordDto): Promise<LoginResponse> {
+  async changePassword(
+    userId: string,
+    dto: ChangePasswordDto,
+  ): Promise<LoginResponse> {
     // Validate mật khẩu mới khớp
     if (dto.newPassword !== dto.confirmPassword) {
       throw new BadRequestException('Mật khẩu xác nhận không khớp');
@@ -154,7 +160,10 @@ export class AuthService {
    * Dùng cho bước 2a ở FE: user nhập OTP trước, FE verify, rồi mới cho nhập MK mới
    */
   async verifyOtp(dto: VerifyOtpDto): Promise<{ valid: boolean }> {
-    const user = await this.userService.findByEmailWithValidOtp(dto.email, dto.otp);
+    const user = await this.userService.findByEmailWithValidOtp(
+      dto.email,
+      dto.otp,
+    );
     if (!user) {
       throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
     }
@@ -171,7 +180,10 @@ export class AuthService {
     }
 
     // Tìm user với OTP hợp lệ
-    const user = await this.userService.findByEmailWithValidOtp(dto.email, dto.otp);
+    const user = await this.userService.findByEmailWithValidOtp(
+      dto.email,
+      dto.otp,
+    );
     if (!user) {
       throw new BadRequestException('Mã OTP không hợp lệ hoặc đã hết hạn');
     }
@@ -201,7 +213,10 @@ export class AuthService {
   }
 
   // ── Private helper ─────────────────────────────────────────
-  private signTokenAndBuildResponse(user: User, mustChangePassword: boolean): LoginResponse {
+  private signTokenAndBuildResponse(
+    user: User,
+    mustChangePassword: boolean,
+  ): LoginResponse {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,

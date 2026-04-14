@@ -1,0 +1,105 @@
+﻿
+> be-demo@0.0.1 lint
+> eslint "{src,apps,libs,test}/**/*.ts" --fix
+
+
+E:\TaMi\be-demo\src\common\guards\roles.guard.ts
+  24:11  error    Unsafe assignment of an `any` value                                     @typescript-eslint/no-unsafe-assignment
+  26:42  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  26:47  error    Unsafe member access .role on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+E:\TaMi\be-demo\src\database\seeds\seed-all.ts
+   37:3  error  'PoFile' is defined but never used       @typescript-eslint/no-unused-vars
+   38:3  error  'FileLabel' is defined but never used    @typescript-eslint/no-unused-vars
+  876:9  error  'l3' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+E:\TaMi\be-demo\src\features\admin\admin.controller.ts
+  54:46  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  54:50  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  68:50  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  68:54  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  68:63  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  68:67  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  78:47  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  78:51  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  92:53  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  92:57  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+E:\TaMi\be-demo\src\features\admin\admin.service.ts
+   41:27  error  Unsafe member access .role on an `any` value                      @typescript-eslint/no-unsafe-member-access
+   42:29  error  Unsafe member access .status on an `any` value                    @typescript-eslint/no-unsafe-member-access
+   57:9   error  Unsafe assignment of an `any` value                               @typescript-eslint/no-unsafe-assignment
+   62:39  error  '_' is defined but never used                                     @typescript-eslint/no-unused-vars
+   69:37  error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+   74:7   error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+  110:27  error  '_' is assigned a value but never used                            @typescript-eslint/no-unused-vars
+  125:37  error  The two values in this comparison do not have a shared enum type  @typescript-eslint/no-unsafe-enum-comparison
+  134:27  error  '_' is assigned a value but never used                            @typescript-eslint/no-unused-vars
+  156:27  error  '_' is assigned a value but never used                            @typescript-eslint/no-unused-vars
+  165:5   error  'callerId' is defined but never used                              @typescript-eslint/no-unused-vars
+
+E:\TaMi\be-demo\src\features\auth\auth.controller.ts
+  37:44  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  37:48  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+E:\TaMi\be-demo\src\features\auth\auth.module.ts
+  22:11  error  Unsafe assignment of an `any` value  @typescript-eslint/no-unsafe-assignment
+
+E:\TaMi\be-demo\src\features\boms\boms.controller.ts
+  35:32  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<Bom>`        @typescript-eslint/no-unsafe-argument
+  45:50  warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`  @typescript-eslint/no-unsafe-argument
+  45:54  error    Unsafe member access .user on an `any` value                                        @typescript-eslint/no-unsafe-member-access
+  50:40  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<BomLine>`    @typescript-eslint/no-unsafe-argument
+
+E:\TaMi\be-demo\src\features\boms\boms.service.ts
+  22:30  error  Unsafe member access .poId on an `any` value    @typescript-eslint/no-unsafe-member-access
+  23:32  error  Unsafe member access .lineId on an `any` value  @typescript-eslint/no-unsafe-member-access
+  25:7   error  Unsafe assignment of an `any` value             @typescript-eslint/no-unsafe-assignment
+
+E:\TaMi\be-demo\src\features\masters\entities\material.entity.ts
+  7:3  error  'OneToMany' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\TaMi\be-demo\src\features\po-lines\po-lines.controller.ts
+   33:38  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<PoLine>`        @typescript-eslint/no-unsafe-argument
+   38:36  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<PoLine>`        @typescript-eslint/no-unsafe-argument
+   86:41  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<LineAs3bStep>`  @typescript-eslint/no-unsafe-argument
+  103:43  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<LineSample>`    @typescript-eslint/no-unsafe-argument
+  111:48  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<LineSample>`    @typescript-eslint/no-unsafe-argument
+
+E:\TaMi\be-demo\src\features\production-plans\entities\production-plan.entity.ts
+  9:3  error  'Unique' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\TaMi\be-demo\src\features\production-plans\production-plans.controller.ts
+  44:32  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<ProductionPlan>`  @typescript-eslint/no-unsafe-argument
+  44:38  warning  Unsafe argument of type `any` assigned to a parameter of type `string | undefined`       @typescript-eslint/no-unsafe-argument
+  44:42  error    Unsafe member access .user on an `any` value                                             @typescript-eslint/no-unsafe-member-access
+  49:36  warning  Unsafe argument of type `any` assigned to a parameter of type `Partial<ProductionPlan>`  @typescript-eslint/no-unsafe-argument
+
+E:\TaMi\be-demo\src\features\purchase-orders\dto\purchase-order.dto.ts
+  7:3  error  'IsUUID' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\TaMi\be-demo\src\features\purchase-orders\entities\purchase-order.entity.ts
+  7:3  error  'OneToMany' is defined but never used  @typescript-eslint/no-unused-vars
+
+E:\TaMi\be-demo\src\features\purchase-orders\purchase-orders.controller.ts
+  47:37  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  47:41  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  56:41  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  56:45  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+  61:40  warning  Unsafe argument of type `any` assigned to a parameter of type `string`  @typescript-eslint/no-unsafe-argument
+  61:44  error    Unsafe member access .user on an `any` value                            @typescript-eslint/no-unsafe-member-access
+
+E:\TaMi\be-demo\src\features\purchase-orders\purchase-orders.service.ts
+  109:36  error  Unsafe assignment of an error typed value  @typescript-eslint/no-unsafe-assignment
+  109:53  error  Unsafe assignment of an `any` value        @typescript-eslint/no-unsafe-assignment
+
+E:\TaMi\be-demo\src\mail\mail.service.ts
+   98:72  error  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+  165:70  error  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+  230:68  error  Unsafe member access .message on an `any` value  @typescript-eslint/no-unsafe-member-access
+
+E:\TaMi\be-demo\src\main.ts
+  28:1  warning  Promises must be awaited, end with a call to .catch, end with a call to .then with a rejection handler or be explicitly marked as ignored with the `void` operator  @typescript-eslint/no-floating-promises
+
+Γ£û 62 problems (40 errors, 22 warnings)
+

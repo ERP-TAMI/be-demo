@@ -29,7 +29,10 @@ export class MailService {
     tempPassword: string;
   }): Promise<void> {
     const { to, fullName, tempPassword } = options;
-    const loginUrl = this.configService.get<string>('APP_URL', 'http://localhost:5173');
+    const loginUrl = this.configService.get<string>(
+      'APP_URL',
+      'http://localhost:5173',
+    );
 
     const html = `
 <!DOCTYPE html>
@@ -92,7 +95,10 @@ export class MailService {
       });
       this.logger.log(`Welcome email sent to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send welcome email to ${to}`, error.message);
+      this.logger.error(
+        `Failed to send welcome email to ${to}`,
+        (error as Error).message,
+      );
       // Không throw — lỗi email không nên chặn việc tạo user
     }
   }
@@ -106,7 +112,10 @@ export class MailService {
     newPassword: string;
   }): Promise<void> {
     const { to, fullName, newPassword } = options;
-    const loginUrl = this.configService.get<string>('APP_URL', 'http://localhost:5173');
+    const loginUrl = this.configService.get<string>(
+      'APP_URL',
+      'http://localhost:5173',
+    );
 
     const html = `
 <!DOCTYPE html>
@@ -156,7 +165,10 @@ export class MailService {
       });
       this.logger.log(`Reset password email sent to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send reset email to ${to}`, error.message);
+      this.logger.error(
+        `Failed to send reset email to ${to}`,
+        (error as Error).message,
+      );
     }
   }
 
@@ -221,7 +233,10 @@ export class MailService {
       });
       this.logger.log(`Forgot-password OTP email sent to ${to}`);
     } catch (error) {
-      this.logger.error(`Failed to send OTP email to ${to}`, error.message);
+      this.logger.error(
+        `Failed to send OTP email to ${to}`,
+        (error as Error).message,
+      );
     }
   }
 }

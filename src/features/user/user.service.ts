@@ -38,7 +38,10 @@ export class UserService {
   /**
    * Tăng số lần login sai; nếu đạt ngưỡng → set lockout
    */
-  async incrementLoginFail(userId: string, currentCount: number): Promise<void> {
+  async incrementLoginFail(
+    userId: string,
+    currentCount: number,
+  ): Promise<void> {
     const newCount = currentCount + 1;
 
     if (newCount >= 5) {
@@ -81,11 +84,15 @@ export class UserService {
    * Tìm user theo email VÀ OTP còn hạn.
    * Trả null nếu không tìm thấy, OTP sai, hoặc OTP đã hết hạn.
    */
-  async findByEmailWithValidOtp(email: string, otp: string): Promise<User | null> {
+  async findByEmailWithValidOtp(
+    email: string,
+    otp: string,
+  ): Promise<User | null> {
     const user = await this.userRepository.findOne({ where: { email } });
     if (!user) return null;
     if (!user.resetOtp || user.resetOtp !== otp) return null;
-    if (!user.resetOtpExpiresAt || user.resetOtpExpiresAt < new Date()) return null;
+    if (!user.resetOtpExpiresAt || user.resetOtpExpiresAt < new Date())
+      return null;
     return user;
   }
 

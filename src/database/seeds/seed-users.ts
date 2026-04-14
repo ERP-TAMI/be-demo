@@ -1,7 +1,11 @@
 import { DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { config } from 'dotenv';
-import { User, UserRole, UserStatus } from '../../features/user/entities/user.entity';
+import {
+  User,
+  UserRole,
+  UserStatus,
+} from '../../features/user/entities/user.entity.js';
 
 config(); // load .env
 

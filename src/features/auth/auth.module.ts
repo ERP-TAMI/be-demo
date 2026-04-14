@@ -19,7 +19,8 @@ import { MailModule } from '../../mail/mail.module.js';
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET', 'erp-may-secret'),
         signOptions: {
-          expiresIn: (configService.get<string>('JWT_EXPIRES_IN', '60m')) as any,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '60m') as any,
         },
       }),
     }),
