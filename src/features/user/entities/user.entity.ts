@@ -38,6 +38,9 @@ export class User {
   @Column({ type: 'varchar', length: 20, nullable: true })
   phone: string;
 
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'avatar_url' })
+  avatarUrl: string | null;
+
   @Column({ type: 'enum', enum: UserRole })
   role: UserRole;
 

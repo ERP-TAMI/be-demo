@@ -25,6 +25,14 @@ export class UserService {
   }
 
   /**
+   * Lưu user entity — dùng cho updateProfile, v.v.
+   */
+  async save(user: User): Promise<User> {
+    return this.userRepository.save(user);
+  }
+
+
+  /**
    * Cập nhật thông tin sau khi login thành công
    */
   async updateLoginSuccess(userId: string): Promise<void> {

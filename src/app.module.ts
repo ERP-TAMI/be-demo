@@ -7,6 +7,7 @@ import { UserModule } from './features/user/user.module.js';
 import { AuthModule } from './features/auth/auth.module.js';
 import { AdminModule } from './features/admin/admin.module.js';
 import { MailModule } from './mail/mail.module.js';
+import { UploadModule } from './features/upload/upload.module.js';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { MailModule } from './mail/mail.module.js';
     UserModule,
     AuthModule,
     AdminModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
