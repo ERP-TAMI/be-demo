@@ -9,7 +9,10 @@ import { ILike, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User, UserRole, UserStatus } from '../user/entities/user.entity.js';
 import { MailService } from '../../mail/mail.service.js';
-import { CreateUserDto, ASSIGNABLE_ROLES_BY_IT } from './dto/create-user.dto.js';
+import {
+  CreateUserDto,
+  ASSIGNABLE_ROLES_BY_IT,
+} from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 
@@ -33,7 +36,7 @@ export class AdminService {
   // ─────────────────────────────── LIST ───────────────────────────────
 
   async listUsers(query: UserListQuery): Promise<SafeUser[]> {
-    const where: any = {};
+    const where: { role?: UserRole; status?: UserStatus } = {};
 
     if (query.role) where.role = query.role;
     if (query.status) where.status = query.status;
@@ -56,22 +59,31 @@ export class AdminService {
       });
     }
 
-    return users.map(({ passwordHash: _, ...safe }) => safe as SafeUser);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    return users.map(({ passwordHash: _hash, ...safe }) => safe as SafeUser);
   }
 
   // ─────────────────────────────── CREATE ───────────────────────────────
 
-  async createUser(dto: CreateUserDto, callerRole: string): Promise<SafeUser> {
+  async createUser(
+    dto: CreateUserDto,
+    callerRole: UserRole,
+  ): Promise<SafeUser> {
     // Rule: IT không được tạo SA
     if (dto.role === UserRole.SA && callerRole !== UserRole.SA) {
       throw new ForbiddenException('Không được phép gán quyền Super Admin');
     }
-    if (!ASSIGNABLE_ROLES_BY_IT.includes(dto.role) && callerRole === UserRole.IT) {
+    if (
+      !ASSIGNABLE_ROLES_BY_IT.includes(dto.role) &&
+      callerRole === UserRole.IT
+    ) {
       throw new ForbiddenException('Không được phép gán quyền này');
     }
 
     // Kiểm tra email unique
-    const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+    const existing = await this.userRepository.findOne({
+      where: { email: dto.email },
+    });
     if (existing) {
       throw new BadRequestException('Email này đã được đăng ký trong hệ thống');
     }
@@ -99,7 +111,8 @@ export class AdminService {
       tempPassword: dto.password,
     });
 
-    const { passwordHash: _, ...safe } = saved;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _hash, ...safe } = saved;
     return safe as SafeUser;
   }
 
@@ -109,7 +122,7 @@ export class AdminService {
     targetId: string,
     dto: UpdateUserDto,
     callerId: string,
-    callerRole: string,
+    callerRole: UserRole,
   ): Promise<SafeUser> {
     const user = await this.findOrThrow(targetId);
 
@@ -123,7 +136,8 @@ export class AdminService {
     if (dto.phone !== undefined) user.phone = dto.phone;
 
     const saved = await this.userRepository.save(user);
-    const { passwordHash: _, ...safe } = saved;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _hash, ...safe } = saved;
     return safe as SafeUser;
   }
 
@@ -132,16 +146,21 @@ export class AdminService {
   async toggleStatus(targetId: string, callerId: string): Promise<SafeUser> {
     // Rule: không tự vô hiệu hóa chính mình
     if (targetId === callerId) {
-      throw new ForbiddenException('Không thể vô hiệu hóa tài khoản của chính mình');
+      throw new ForbiddenException(
+        'Không thể vô hiệu hóa tài khoản của chính mình',
+      );
     }
 
     const user = await this.findOrThrow(targetId);
 
     user.status =
-      user.status === UserStatus.ACTIVE ? UserStatus.INACTIVE : UserStatus.ACTIVE;
+      user.status === UserStatus.ACTIVE
+        ? UserStatus.INACTIVE
+        : UserStatus.ACTIVE;
 
     const saved = await this.userRepository.save(user);
-    const { passwordHash: _, ...safe } = saved;
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { passwordHash: _hash, ...safe } = saved;
     return safe as SafeUser;
   }
 
@@ -150,7 +169,6 @@ export class AdminService {
   async resetPassword(
     targetId: string,
     dto: ResetPasswordDto,
-    callerId: string,
   ): Promise<{ message: string }> {
     const user = await this.findOrThrow(targetId);
 

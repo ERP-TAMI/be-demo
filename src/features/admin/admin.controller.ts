@@ -39,7 +39,8 @@ export class AdminController {
     const query: UserListQuery = {};
     if (search) query.search = search;
     if (role && Object.values(UserRole).includes(role)) query.role = role;
-    if (status && Object.values(UserStatus).includes(status)) query.status = status;
+    if (status && Object.values(UserStatus).includes(status))
+      query.status = status;
     return this.adminService.listUsers(query);
   }
 
@@ -49,7 +50,10 @@ export class AdminController {
    */
   @Post('users')
   @Roles('IT')
-  createUser(@Body() dto: CreateUserDto, @Request() req) {
+  createUser(
+    @Body() dto: CreateUserDto,
+    @Request() req: { user: { role: UserRole } },
+  ) {
     return this.adminService.createUser(dto, req.user.role);
   }
 
@@ -62,7 +66,7 @@ export class AdminController {
   updateUser(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateUserDto,
-    @Request() req,
+    @Request() req: { user: { id: string; role: UserRole } },
   ) {
     return this.adminService.updateUser(id, dto, req.user.id, req.user.role);
   }
@@ -73,7 +77,10 @@ export class AdminController {
    */
   @Patch('users/:id/status')
   @Roles('IT')
-  toggleStatus(@Param('id', ParseUUIDPipe) id: string, @Request() req) {
+  toggleStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: { user: { id: string } },
+  ) {
     return this.adminService.toggleStatus(id, req.user.id);
   }
 
@@ -86,8 +93,7 @@ export class AdminController {
   resetPassword(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ResetPasswordDto,
-    @Request() req,
   ) {
-    return this.adminService.resetPassword(id, dto, req.user.id);
+    return this.adminService.resetPassword(id, dto);
   }
 }
