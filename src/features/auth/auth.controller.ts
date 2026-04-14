@@ -1,10 +1,11 @@
-import { Controller, Post, Patch, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Patch, Get, Body, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { JwtAuthGuard } from './guards/jwt-auth.guard.js';
 
 @Controller('auth')
@@ -18,6 +19,26 @@ export class AuthController {
   @Post('login')
   async login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  /**
+   * GET /api/v1/auth/me
+   * Protected — trả đầy đủ thông tin user (dùng cho profile settings + heartbeat)
+   */
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@Request() req) {
+    return this.authService.getMe(req.user.id);
+  }
+
+  /**
+   * PATCH /api/v1/auth/profile
+   * Protected — user tự cập nhật fullName, phone, avatarUrl của mình
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('profile')
+  async updateProfile(@Request() req, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.user.id, dto);
   }
 
   /**
