@@ -12,6 +12,7 @@ import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
+import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { User, UserStatus } from '../user/entities/user.entity.js';
 import { MailService } from '../../mail/mail.service.js';
 
@@ -32,6 +33,20 @@ export interface LoginResponse {
     role: string;
     mustChangePassword: boolean;
   };
+}
+
+// Dữ liệu trả về cho GET /auth/me — không có accessToken, không expose passwordHash
+export interface MeResponse {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+  phone: string | null;
+  avatarUrl: string | null;
+  status: string;
+  mustChangePassword: boolean;
+  lastLoginAt: Date | null;
+  createdAt: Date;
 }
 
 @Injectable()
@@ -210,6 +225,55 @@ export class AuthService {
       throw new UnauthorizedException();
     }
     return user;
+  }
+
+  /**
+   * API GET /auth/me
+   * Lấy thông tin đầy đủ của user đang đăng nhập từ DB
+   */
+  async getMe(userId: string): Promise<MeResponse> {
+    const user = await this.userService.findById(userId);
+    if (!user || user.status === UserStatus.INACTIVE) {
+      throw new UnauthorizedException();
+    }
+    return this.buildMeResponse(user);
+  }
+
+  /**
+   * API PATCH /auth/profile
+   * Protected — user tự cập nhật fullName, phone, avatarUrl của mình
+   */
+  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<MeResponse> {
+    const user = await this.userService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException('Người dùng không tồn tại');
+    }
+
+    if (dto.fullName !== undefined) user.fullName = dto.fullName;
+    if (dto.phone !== undefined) user.phone = dto.phone;
+    if (dto.avatarUrl !== undefined) user.avatarUrl = dto.avatarUrl;
+
+    await this.userService.save(user);
+
+    return this.buildMeResponse(user);
+  }
+
+  /**
+   * Xây dựng MeResponse từ User entity — dùng cho GET /auth/me và PATCH /auth/profile
+   */
+  buildMeResponse(user: User): MeResponse {
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      phone: user.phone ?? null,
+      avatarUrl: user.avatarUrl ?? null,
+      status: user.status,
+      mustChangePassword: user.mustChangePassword,
+      lastLoginAt: user.lastLoginAt ?? null,
+      createdAt: user.createdAt,
+    };
   }
 
   // ── Private helper ─────────────────────────────────────────

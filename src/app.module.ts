@@ -13,6 +13,7 @@ import { PoLinesModule } from './features/po-lines/po-lines.module.js';
 import { BomsModule } from './features/boms/boms.module.js';
 import { ProductionPlansModule } from './features/production-plans/production-plans.module.js';
 import { UploadsModule } from './features/uploads/uploads.module.js';
+import { UploadModule } from './features/upload/upload.module.js';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { UploadsModule } from './features/uploads/uploads.module.js';
     BomsModule,
     ProductionPlansModule,
     UploadsModule,
+    UploadModule,
   ],
   controllers: [AppController],
   providers: [AppService],
