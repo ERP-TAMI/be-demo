@@ -126,6 +126,7 @@ export class PurchaseOrdersService {
         'lines.samples',
         'lines.samples.images',
       ],
+      relationLoadStrategy: 'query',
     });
     return Promise.all(pos.map((po) => this.mapPo(po)));
   }
@@ -145,6 +146,7 @@ export class PurchaseOrdersService {
         'lines.samples.images',
         'lines.as3bSteps'
       ],
+      relationLoadStrategy: 'query',
     });
     if (!po) throw new NotFoundException(`PurchaseOrder #${id} not found`);
     return this.mapPo(po);

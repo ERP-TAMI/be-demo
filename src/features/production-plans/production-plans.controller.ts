@@ -24,12 +24,14 @@ export class ProductionPlansController {
   findAll(
     @Query('lineId') lineId?: string,
     @Query('workshopId') workshopId?: string,
+    @Query('poCode') poCode?: string,
     @Query('month') month?: string,
     @Query('year') year?: string,
   ) {
     return this.service.findAll({
       lineId,
       workshopId,
+      poCode,
       month: month ? parseInt(month, 10) : undefined,
       year: year ? parseInt(year, 10) : undefined,
     });
