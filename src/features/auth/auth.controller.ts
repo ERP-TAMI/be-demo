@@ -2,11 +2,11 @@ import {
   Controller,
   Post,
   Patch,
+  Get,
   Body,
   UseGuards,
   Request,
 } from '@nestjs/common';
-import { Controller, Post, Patch, Get, Body, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { ChangePasswordDto } from './dto/change-password.dto.js';
