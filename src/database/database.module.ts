@@ -19,7 +19,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         synchronize: false,
         migrationsRun: true, // tự chạy migration khi app khởi động
         autoLoadEntities: true,
-        logging: configService.get<string>('NODE_ENV') === 'development',
+        logging: false,
       }),
     }),
   ],

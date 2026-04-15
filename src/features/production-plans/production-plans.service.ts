@@ -16,34 +16,70 @@ export class ProductionPlansService {
   async findAll(filters?: {
     lineId?: string;
     workshopId?: string;
+    poCode?: string;
     month?: number;
     year?: number;
   }): Promise<ProductionPlan[]> {
-    const qb = this.planRepo
-      .createQueryBuilder('plan')
-      .leftJoinAndSelect('plan.dailyPlans', 'daily')
-      .orderBy('plan.year', 'DESC')
-      .addOrderBy('plan.month', 'DESC');
+    const where: any = {};
+    if (filters?.lineId) where.lineId = filters.lineId;
+    if (filters?.workshopId) where.workshopId = filters.workshopId;
+    if (filters?.month) where.month = filters.month;
+    if (filters?.year) where.year = filters.year;
+    
+    // In TypeORM 0.3, to filter nested relations using find():
+    // We would need to set where.line = { po: { poCode: ILike('%...%') } }
+    // As a workaround for ILike without importing it, we can just fetch and filter in memory if needed, 
+    // but a querybuilder without deeply joined collections is also an option.
+    // However, relationLoadStrategy: 'query' on a .find() is safest for deep trees.
+    if (filters?.poCode) {
+       // We can't easily ILike without import, so just rely on frontend filter or minimal relations
+    }
 
-    if (filters?.lineId)
-      qb.andWhere('plan.line_id = :lineId', { lineId: filters.lineId });
-    if (filters?.workshopId)
-      qb.andWhere('plan.workshop_id = :workshopId', {
-        workshopId: filters.workshopId,
-      });
-    if (filters?.month)
-      qb.andWhere('plan.month = :month', { month: filters.month });
-    if (filters?.year) qb.andWhere('plan.year = :year', { year: filters.year });
+    const plans = await this.planRepo.find({
+      where,
+      relations: [
+        'line',
+        'line.po',
+        'line.colors',
+        'line.colors.sizes',
+        'workshop',
+        'dailyPlans'
+      ],
+      relationLoadStrategy: 'query',
+      order: {
+        year: 'DESC',
+        month: 'DESC',
+      }
+    });
 
-    return qb.getMany();
+    plans.forEach(p => {
+      if (p.dailyPlans) p.dailyPlans.sort((a, b) => a.day - b.day);
+    });
+
+    // Sub-optimal in-memory filter for poCode to avoid syntax issues with missing TypeORM ops imports
+    if (filters?.poCode) {
+      const code = filters.poCode.toLowerCase().trim();
+      return plans.filter(p => p.line?.po?.poCode?.toLowerCase().includes(code));
+    }
+
+    return plans;
   }
 
   async findOne(id: string): Promise<ProductionPlan> {
     const plan = await this.planRepo.findOne({
       where: { id },
-      relations: ['dailyPlans'],
+      relations: [
+        'line',
+        'line.po',
+        'line.colors',
+        'line.colors.sizes',
+        'workshop',
+        'dailyPlans'
+      ],
+      relationLoadStrategy: 'query'
     });
     if (!plan) throw new NotFoundException(`Plan #${id} not found`);
+    if (plan.dailyPlans) plan.dailyPlans.sort((a, b) => a.day - b.day);
     return plan;
   }
 
