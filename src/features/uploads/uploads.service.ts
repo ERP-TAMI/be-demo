@@ -5,6 +5,8 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
+  CreateBucketCommand,
+  HeadBucketCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { randomUUID } from 'crypto';
@@ -46,6 +48,20 @@ export class UploadsService implements OnModuleInit {
     this.logger.log(
       `MinIO client initialized → ${useSSL ? 'https' : 'http'}://${endpoint}:${port}/${this.bucket}`,
     );
+
+    this.ensureBucket().catch((e) =>
+      this.logger.error(`Failed to ensure bucket: ${e.message}`),
+    );
+  }
+
+  private async ensureBucket() {
+    try {
+      await this.s3.send(new HeadBucketCommand({ Bucket: this.bucket }));
+      this.logger.log(`Bucket "${this.bucket}" already exists`);
+    } catch {
+      await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
+      this.logger.log(`Bucket "${this.bucket}" created`);
+    }
   }
 
   /**

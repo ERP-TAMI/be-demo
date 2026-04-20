@@ -1720,8 +1720,7 @@ async function seed() {
     let total = 0;
     for (const line of b.lines) {
       const mat = savedMaterials[line.materialCode];
-      const lineCost =
-        line.consumptionPerUnit * (1 + line.yieldPct / 100) * line.unitCost;
+      const lineCost = line.unitCost * (1 + line.yieldPct / 100);
       total += lineCost;
       await bomLineRepo.save(
         bomLineRepo.create({
@@ -1730,7 +1729,6 @@ async function seed() {
           materialName: mat?.materialName ?? line.materialCode,
           materialGroup: mat?.materialGroup ?? 'Phụ liệu',
           unit: mat?.unit ?? 'Cái',
-          consumptionPerUnit: line.consumptionPerUnit,
           yieldPct: line.yieldPct,
           unitCost: line.unitCost,
           lineCostPerUnit: lineCost,
