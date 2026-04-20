@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class ExpandPoVersionLogEventTypeEnum1776202000000
-  implements MigrationInterface
-{
+export class ExpandPoVersionLogEventTypeEnum1776202000000 implements MigrationInterface {
   name = 'ExpandPoVersionLogEventTypeEnum1776202000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

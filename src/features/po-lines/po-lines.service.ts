@@ -1,4 +1,4 @@
-﻿import {
+import {
   Injectable,
   NotFoundException,
   BadRequestException,
@@ -15,9 +15,15 @@ import { LineSample } from './entities/line-sample.entity.js';
 import { SampleColorImage } from './entities/sample-color-image.entity.js';
 import { LineMappedFile } from './entities/line-mapped-file.entity.js';
 import { LineFile, LineFileLabel } from './entities/line-file.entity.js';
-import { PoVersionLog, PoEventType } from '../purchase-orders/entities/po-version-log.entity.js';
+import {
+  PoVersionLog,
+  PoEventType,
+} from '../purchase-orders/entities/po-version-log.entity.js';
+import {
+  PurchaseOrder,
+  PoStatus,
+} from '../purchase-orders/entities/purchase-order.entity.js';
 import { UserRole } from '../user/entities/user.entity.js';
-
 
 @Injectable()
 export class PoLinesService {
@@ -42,6 +48,8 @@ export class PoLinesService {
     private readonly lineFileRepo: Repository<LineFile>,
     @InjectRepository(PoVersionLog)
     private readonly logRepo: Repository<PoVersionLog>,
+    @InjectRepository(PurchaseOrder)
+    private readonly poRepo: Repository<PurchaseOrder>,
   ) {}
 
   private async writeLineLog(
@@ -60,7 +68,8 @@ export class PoLinesService {
       eventType,
       reason: opts?.reason,
       targetId: line.id,
-      targetLabel: opts?.targetLabel || `${line.styleCode} â€” ${line.productName}`,
+      targetLabel:
+        opts?.targetLabel || `${line.styleCode} — ${line.productName}`,
       changes: opts?.changes,
     });
     await this.logRepo.save(log);
@@ -70,7 +79,9 @@ export class PoLinesService {
     const hasStyleCode = !!line.styleCode?.trim();
     const hasProductName = !!line.productName?.trim();
     const hasDeadline = !!line.deadline;
-    const validColors = (line.colors || []).filter((color) => color.colorName?.trim());
+    const validColors = (line.colors || []).filter((color) =>
+      color.colorName?.trim(),
+    );
     const totalQty = validColors.reduce(
       (sum, color) =>
         sum +
@@ -81,14 +92,20 @@ export class PoLinesService {
       0,
     );
 
-    if (!hasStyleCode || !hasProductName || !hasDeadline || validColors.length === 0 || totalQty <= 0) {
+    if (
+      !hasStyleCode ||
+      !hasProductName ||
+      !hasDeadline ||
+      validColors.length === 0 ||
+      totalQty <= 0
+    ) {
       throw new BadRequestException(
-        'Sản phẩm chưa đủ dữ liệu đọƒ chuyển In Review. Cần có mã hàng, tên sản phẩm, màu sắc, sọ‘ lượng và deadline.',
+        'Sản phẩm chưa đủ dữ liệu để chuyển In Review. Cần có mã hàng, tên sản phẩm, màu sắc, số lượng và deadline.',
       );
     }
   }
 
-  // â”€â”€â”€ Lines CRUD â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Lines CRUD ───────────────────────────────────────────────────────────
 
   private assertTransitionRole(
     beforeStatus: LineStatus,
@@ -96,26 +113,61 @@ export class PoLinesService {
     actorRole?: UserRole,
   ): void {
     if (!actorRole) {
-      throw new ForbiddenException('Không xác định được vai trò người thực hiọ‡n');
+      throw new ForbiddenException(
+        'Không xác định được vai trò người thực hiện',
+      );
     }
 
-    if (beforeStatus === LineStatus.CANCELLED || nextStatus === LineStatus.CANCELLED) {
+    if (
+      beforeStatus === LineStatus.CANCELLED ||
+      nextStatus === LineStatus.CANCELLED
+    ) {
       if (actorRole !== UserRole.TPKH) {
-        throw new ForbiddenException('Chọ‰ TPKH mới được hủy hoặc khôi phục sản phẩm');
+        throw new ForbiddenException(
+          'Chỉ TPKH mới được hủy hoặc khôi phục sản phẩm',
+        );
       }
       return;
     }
 
-    if (beforeStatus === LineStatus.DRAFT && nextStatus === LineStatus.IN_REVIEW && actorRole !== UserRole.RD) {
-      throw new ForbiddenException('Chọ‰ R&D mới được chuyển sản phẩm sang In Review');
+    if (
+      beforeStatus === LineStatus.DRAFT &&
+      nextStatus === LineStatus.IN_REVIEW &&
+      actorRole !== UserRole.RD
+    ) {
+      throw new ForbiddenException(
+        'Chỉ R&D mới được chuyển sản phẩm sang In Review',
+      );
     }
 
-    if (beforeStatus === LineStatus.IN_REVIEW && nextStatus === LineStatus.SAMPLING && actorRole !== UserRole.NVKH) {
-      throw new ForbiddenException('Chọ‰ NVKH mới được chuyển sản phẩm sang Sampling');
+    // RD có thể chuyển thẳng Draft → Sampling (bỏ qua bước In_Review)
+    if (
+      beforeStatus === LineStatus.DRAFT &&
+      nextStatus === LineStatus.SAMPLING &&
+      actorRole !== UserRole.RD
+    ) {
+      throw new ForbiddenException(
+        'Chỉ R&D mới được chuyển sản phẩm sang Sampling',
+      );
     }
 
-    if (beforeStatus === LineStatus.SAMPLING && nextStatus === LineStatus.FINAL && actorRole !== UserRole.TPKH) {
-      throw new ForbiddenException('Chọ‰ TPKH mới được chọ‘t Final');
+    if (
+      beforeStatus === LineStatus.IN_REVIEW &&
+      nextStatus === LineStatus.SAMPLING &&
+      actorRole !== UserRole.NVKH &&
+      actorRole !== UserRole.TPKH
+    ) {
+      throw new ForbiddenException(
+        'Chỉ NVKH hoặc TPKH mới được chuyển sản phẩm sang Sampling',
+      );
+    }
+
+    if (
+      beforeStatus === LineStatus.SAMPLING &&
+      nextStatus === LineStatus.FINAL &&
+      actorRole !== UserRole.TPKH
+    ) {
+      throw new ForbiddenException('Chỉ TPKH mới được chốt Final');
     }
   }
 
@@ -148,7 +200,11 @@ export class PoLinesService {
     return line;
   }
 
-  async create(poId: string, dto: Partial<PoLine>, actor = 'system'): Promise<PoLine> {
+  async create(
+    poId: string,
+    dto: Partial<PoLine>,
+    actor = 'system',
+  ): Promise<PoLine> {
     const line = this.lineRepo.create({
       ...dto,
       poId,
@@ -156,12 +212,24 @@ export class PoLinesService {
     });
     const saved = await this.lineRepo.save(line);
     await this.writeLineLog(saved, actor, PoEventType.LINE_ADDED, {
-      reason: `Tạo sản phẩm ${saved.styleCode} â€” ${saved.productName}`,
+      reason: `Tạo sản phẩm ${saved.styleCode} - ${saved.productName}`,
     });
+
+    // Auto-transition PO: Pending_RD -> In_Progress khi them line dau tien
+    const po = await this.poRepo.findOne({ where: { id: poId } });
+    if (po && po.status === PoStatus.PENDING_RD) {
+      po.status = PoStatus.IN_PROGRESS;
+      await this.poRepo.save(po);
+    }
+
     return saved;
   }
 
-  async update(id: string, dto: Partial<PoLine>, actor = 'system'): Promise<PoLine> {
+  async update(
+    id: string,
+    dto: Partial<PoLine>,
+    actor = 'system',
+  ): Promise<PoLine> {
     const line = await this.findOne(id);
     const changes = Object.entries(dto).map(([field, after]) => ({
       field,
@@ -173,7 +241,7 @@ export class PoLinesService {
     const saved = await this.lineRepo.save(line);
     if (changes.length > 0) {
       await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
-        reason: `Cập nhật sản phẩm ${saved.styleCode} â€” ${saved.productName}`,
+        reason: `Cập nhật sản phẩm ${saved.styleCode} – ${saved.productName}`,
         changes,
       });
     }
@@ -189,19 +257,22 @@ export class PoLinesService {
     const beforeStatus = line.status;
     const actor = opts?.actor ?? 'system';
     const validTransitions: Record<LineStatus, LineStatus[]> = {
-      [LineStatus.DRAFT]: [LineStatus.IN_REVIEW, LineStatus.CANCELLED],
-      [LineStatus.IN_REVIEW]: [LineStatus.SAMPLING, LineStatus.CANCELLED],
-      [LineStatus.SAMPLING]: [
-        LineStatus.FINAL,
+      [LineStatus.DRAFT]: [
+        LineStatus.IN_REVIEW,
+        LineStatus.SAMPLING,
         LineStatus.CANCELLED,
       ],
+      [LineStatus.IN_REVIEW]: [LineStatus.SAMPLING, LineStatus.CANCELLED],
+      [LineStatus.SAMPLING]: [LineStatus.FINAL, LineStatus.CANCELLED],
       [LineStatus.FINAL]: [],
       [LineStatus.CANCELLED]: [],
     };
 
     if (line.status === LineStatus.CANCELLED) {
       if (!line.previousStatus || status !== line.previousStatus) {
-        throw new BadRequestException('Chọ‰ có thọƒ khôi phục sản phẩm về trạng thái trÆ°ớc khi hủy');
+        throw new BadRequestException(
+          'Chỉ có thể khôi phục sản phẩm về trạng thái trước khi hủy',
+        );
       }
     } else if (!validTransitions[line.status].includes(status)) {
       throw new BadRequestException(
@@ -216,7 +287,7 @@ export class PoLinesService {
     }
 
     if (status === LineStatus.CANCELLED && !opts?.reason?.trim()) {
-      throw new BadRequestException('Lý do hủy là bắt buọ™c');
+      throw new BadRequestException('Lý do hủy là bắt buộc');
     }
 
     if (status === LineStatus.CANCELLED) {
@@ -228,7 +299,9 @@ export class PoLinesService {
     line.status = status;
     const saved = await this.lineRepo.save(line);
     await this.writeLineLog(saved, actor, PoEventType.LINE_STATUS_CHANGED, {
-      reason: opts?.reason?.trim() || `Line status changed ${saved.styleCode}: ${beforeStatus} -> ${status}`,
+      reason:
+        opts?.reason?.trim() ||
+        `Line status changed ${saved.styleCode}: ${beforeStatus} -> ${status}`,
       changes: [
         {
           field: 'status',
@@ -246,7 +319,7 @@ export class PoLinesService {
     await this.lineRepo.remove(line);
   }
 
-  // â”€â”€â”€ Colors & Sizes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Colors & Sizes ───────────────────────────────────────────────────
 
   async addColor(lineId: string, colorName: string): Promise<LineColor> {
     await this.findOne(lineId);
@@ -269,11 +342,17 @@ export class PoLinesService {
     await this.colorRepo.remove(color);
   }
 
-  // â”€â”€â”€ Line Files â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── Line Files ─────────────────────────────────────────────────────────
 
   async addLineFile(
     lineId: string,
-    dto: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string },
+    dto: {
+      fileKey: string;
+      originalName: string;
+      label?: string;
+      version?: number;
+      fileGroupId?: string;
+    },
     actor = 'system',
   ): Promise<LineFile> {
     const line = await this.findOne(lineId);
@@ -304,7 +383,7 @@ export class PoLinesService {
     });
   }
 
-  // â”€â”€â”€ AS3B Steps â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── AS3B Steps ────────────────────────────────────────────────────────
 
   async findAs3bSteps(lineId: string): Promise<LineAs3bStep[]> {
     return this.stepRepo.find({
@@ -337,7 +416,34 @@ export class PoLinesService {
     });
   }
 
-  // â”€â”€â”€ Samples â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  async syncAs3bSteps(
+    lineId: string,
+    stepsDto: Partial<LineAs3bStep>[],
+    actor = 'system',
+  ): Promise<LineAs3bStep[]> {
+    const line = await this.findOne(lineId);
+
+    // Xóa các bước cũ
+    await this.stepRepo.delete({ lineId });
+
+    // Thêm các bước mới
+    const steps = stepsDto.map((dto, idx) =>
+      this.stepRepo.create({
+        ...dto,
+        lineId,
+        orderIndex: dto.orderIndex ?? idx + 1,
+      }),
+    );
+    const saved = await this.stepRepo.save(steps);
+
+    await this.writeLineLog(line, actor, PoEventType.LINE_UPDATED, {
+      reason: `Cập nhật bảng thông số kỹ thuật (AS3B) — ${saved.length} công đoạn`,
+    });
+
+    return saved;
+  }
+
+  // ─── Samples ────────────────────────────────────────────────────────────
 
   async findSamples(lineId: string): Promise<LineSample[]> {
     return this.sampleRepo.find({
@@ -349,7 +455,9 @@ export class PoLinesService {
 
   async addSample(
     lineId: string,
-    dto: Partial<LineSample> & { images?: { colorName: string; colorId?: string; imageUrl: string }[] },
+    dto: Partial<LineSample> & {
+      images?: { colorName: string; colorId?: string; imageUrl: string }[];
+    },
     actor = 'system',
   ): Promise<LineSample> {
     const line = await this.findOne(lineId);
@@ -359,7 +467,7 @@ export class PoLinesService {
 
     // Lưu ảnh sau khi có sampleId
     if (images && images.length > 0) {
-      const imgEntities = images.map(img =>
+      const imgEntities = images.map((img) =>
         this.imageRepo.create({
           sampleId: saved.id,
           colorName: img.colorName || '',
@@ -376,7 +484,7 @@ export class PoLinesService {
       relations: ['images'],
     });
     await this.writeLineLog(line, actor, PoEventType.SAMPLE_ADDED, {
-      reason: `Thêm đợt mẫu ${saved.round}${saved.feedback ? ` â€” ${saved.feedback}` : ''}`,
+      reason: `Thêm đợt mẫu ${saved.round}${saved.feedback ? ` — ${saved.feedback}` : ''}`,
       targetLabel: `Đợt mẫu ${saved.round}`,
     });
     return finalSample as LineSample;
@@ -408,7 +516,7 @@ export class PoLinesService {
     return saved;
   }
 
-  // â”€â”€â”€ File Mappings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ─── File Mappings ─────────────────────────────────────────────────────
 
   async assignFileToLines(
     poId: string,
@@ -419,14 +527,17 @@ export class PoLinesService {
     // 1. Remove existing mappings for this file (optional, depending on logic, but here we sync)
     // Actually, usually we just add or sync. Let's sync for the given lineIds.
     // For drag and drop, we just want to ADD to a specific line.
-    
+
     // If we want a simple "Add" (best for Drag & Drop):
     for (const lineId of lineIds) {
       const exists = await this.mappedFileRepo.findOne({
         where: { poFileId: fileId, lineId },
       });
       if (!exists) {
-        const mapping = this.mappedFileRepo.create({ poFileId: fileId, lineId });
+        const mapping = this.mappedFileRepo.create({
+          poFileId: fileId,
+          lineId,
+        });
         await this.mappedFileRepo.save(mapping);
         const line = await this.findOne(lineId);
         await this.writeLineLog(line, actor, PoEventType.FILE_ASSIGNED, {
@@ -436,5 +547,3 @@ export class PoLinesService {
     }
   }
 }
-
-

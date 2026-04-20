@@ -6,10 +6,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  PurchaseOrder,
-  PoStatus,
-} from './entities/purchase-order.entity.js';
+import { PurchaseOrder, PoStatus } from './entities/purchase-order.entity.js';
 import { PoFile, FileLabel } from './entities/po-file.entity.js';
 import { PoVersionLog, PoEventType } from './entities/po-version-log.entity.js';
 import {
@@ -75,7 +72,9 @@ export class PurchaseOrdersService {
         await Promise.all(
           (line.files || []).map(async (file) => {
             if (file.fileUrl && !file.fileUrl.startsWith('http')) {
-              file.fileUrl = await this.uploadsService.getPresignedUrl(file.fileUrl);
+              file.fileUrl = await this.uploadsService.getPresignedUrl(
+                file.fileUrl,
+              );
             }
           }),
         );
@@ -84,7 +83,9 @@ export class PurchaseOrdersService {
           (line.samples || []).flatMap((sample) =>
             (sample.images || []).map(async (image) => {
               if (image.imageUrl && !image.imageUrl.startsWith('http')) {
-                image.imageUrl = await this.uploadsService.getPresignedUrl(image.imageUrl);
+                image.imageUrl = await this.uploadsService.getPresignedUrl(
+                  image.imageUrl,
+                );
               }
             }),
           ),
@@ -92,8 +93,14 @@ export class PurchaseOrdersService {
 
         await Promise.all(
           (line.mappedFiles || []).map(async (mappedFile) => {
-            if (mappedFile.poFile?.fileUrl && !mappedFile.poFile.fileUrl.startsWith('http')) {
-              mappedFile.poFile.fileUrl = await this.uploadsService.getPresignedUrl(mappedFile.poFile.fileUrl);
+            if (
+              mappedFile.poFile?.fileUrl &&
+              !mappedFile.poFile.fileUrl.startsWith('http')
+            ) {
+              mappedFile.poFile.fileUrl =
+                await this.uploadsService.getPresignedUrl(
+                  mappedFile.poFile.fileUrl,
+                );
             }
           }),
         );
@@ -135,16 +142,16 @@ export class PurchaseOrdersService {
     const po = await this.poRepo.findOne({
       where: { id },
       relations: [
-        'lines', 
-        'files', 
-        'lines.colors', 
-        'lines.colors.sizes', 
-        'lines.files', 
-        'lines.mappedFiles', 
+        'lines',
+        'files',
+        'lines.colors',
+        'lines.colors.sizes',
+        'lines.files',
+        'lines.mappedFiles',
         'lines.mappedFiles.poFile',
         'lines.samples',
         'lines.samples.images',
-        'lines.as3bSteps'
+        'lines.as3bSteps',
       ],
       relationLoadStrategy: 'query',
     });
@@ -229,18 +236,18 @@ export class PurchaseOrdersService {
       fileName: data.originalName,
       label: (data.label as FileLabel) || FileLabel.TAI_LIEU_KHAC,
     });
-    
+
     const saved = await this.poFileRepo.save(poFile);
     await this.writeLog(poId, actorEmail, PoEventType.FILE_ADDED, {
       targetId: saved.id,
       targetLabel: saved.fileName,
     });
-    
+
     // Map URL for the single added file
     if (saved.fileUrl && !saved.fileUrl.startsWith('http')) {
       saved.fileUrl = await this.uploadsService.getPresignedUrl(saved.fileUrl);
     }
-    
+
     return saved;
   }
 
@@ -250,8 +257,9 @@ export class PurchaseOrdersService {
     actorEmail: string,
   ): Promise<void> {
     const file = await this.poFileRepo.findOne({ where: { id: fileId, poId } });
-    if (!file) throw new NotFoundException(`File #${fileId} not found on PO #${poId}`);
-    
+    if (!file)
+      throw new NotFoundException(`File #${fileId} not found on PO #${poId}`);
+
     await this.poFileRepo.remove(file);
     await this.writeLog(poId, actorEmail, PoEventType.FILE_REMOVED, {
       targetId: file.id,
@@ -271,6 +279,34 @@ export class PurchaseOrdersService {
     await this.writeLog(id, actorEmail, PoEventType.PO_FINALIZED);
 
     return this.findOne(saved.id);
+  }
+
+  async updateStatus(
+    id: string,
+    status: PoStatus,
+    actorEmail: string,
+  ): Promise<PurchaseOrder> {
+    const po = await this.findOne(id);
+    const validTransitions: Partial<Record<PoStatus, PoStatus[]>> = {
+      [PoStatus.DRAFT]: [PoStatus.PENDING_RD, PoStatus.CANCELLED],
+      [PoStatus.PENDING_RD]: [PoStatus.IN_PROGRESS, PoStatus.CANCELLED],
+      [PoStatus.IN_PROGRESS]: [PoStatus.PO_FINAL, PoStatus.CANCELLED],
+    };
+    const allowed = validTransitions[po.status] ?? [];
+    if (!allowed.includes(status)) {
+      throw new BadRequestException(
+        `Không thể chuyển từ ${po.status} sang ${status}`,
+      );
+    }
+    po.status = status;
+    if (status === PoStatus.PO_FINAL) {
+      po.finalizedAt = new Date();
+    }
+    await this.poRepo.save(po);
+    await this.writeLog(id, actorEmail, PoEventType.PO_FINALIZED, {
+      changes: [{ field: 'status', before: po.status, after: status }],
+    });
+    return this.findOne(id);
   }
 
   async remove(id: string): Promise<void> {

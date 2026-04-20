@@ -84,9 +84,14 @@ export class BomsService {
     await this.writeBomLog(created, actor ?? 'system', PoEventType.BOM_CREATED);
 
     if ((created.version || 1) > 1 && created.changeReason) {
-      await this.writeBomLog(created, actor ?? 'system', PoEventType.BOM_REVISED, {
-        reason: created.changeReason,
-      });
+      await this.writeBomLog(
+        created,
+        actor ?? 'system',
+        PoEventType.BOM_REVISED,
+        {
+          reason: created.changeReason,
+        },
+      );
     }
 
     return created;
@@ -109,13 +114,18 @@ export class BomsService {
     const updated = await this.findOne(id);
 
     if (Object.keys(patch).length > 0) {
-      await this.writeBomLog(updated, actor ?? 'system', PoEventType.BOM_UPDATED, {
-        changes: Object.keys(patch).map((field) => ({
-          field,
-          before: bom[field as keyof Bom] ?? null,
-          after: updated[field as keyof Bom] ?? null,
-        })),
-      });
+      await this.writeBomLog(
+        updated,
+        actor ?? 'system',
+        PoEventType.BOM_UPDATED,
+        {
+          changes: Object.keys(patch).map((field) => ({
+            field,
+            before: bom[field as keyof Bom] ?? null,
+            after: updated[field as keyof Bom] ?? null,
+          })),
+        },
+      );
     }
 
     return updated;

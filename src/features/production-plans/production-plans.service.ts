@@ -25,14 +25,14 @@ export class ProductionPlansService {
     if (filters?.workshopId) where.workshopId = filters.workshopId;
     if (filters?.month) where.month = filters.month;
     if (filters?.year) where.year = filters.year;
-    
+
     // In TypeORM 0.3, to filter nested relations using find():
     // We would need to set where.line = { po: { poCode: ILike('%...%') } }
-    // As a workaround for ILike without importing it, we can just fetch and filter in memory if needed, 
+    // As a workaround for ILike without importing it, we can just fetch and filter in memory if needed,
     // but a querybuilder without deeply joined collections is also an option.
     // However, relationLoadStrategy: 'query' on a .find() is safest for deep trees.
     if (filters?.poCode) {
-       // We can't easily ILike without import, so just rely on frontend filter or minimal relations
+      // We can't easily ILike without import, so just rely on frontend filter or minimal relations
     }
 
     const plans = await this.planRepo.find({
@@ -43,23 +43,25 @@ export class ProductionPlansService {
         'line.colors',
         'line.colors.sizes',
         'workshop',
-        'dailyPlans'
+        'dailyPlans',
       ],
       relationLoadStrategy: 'query',
       order: {
         year: 'DESC',
         month: 'DESC',
-      }
+      },
     });
 
-    plans.forEach(p => {
+    plans.forEach((p) => {
       if (p.dailyPlans) p.dailyPlans.sort((a, b) => a.day - b.day);
     });
 
     // Sub-optimal in-memory filter for poCode to avoid syntax issues with missing TypeORM ops imports
     if (filters?.poCode) {
       const code = filters.poCode.toLowerCase().trim();
-      return plans.filter(p => p.line?.po?.poCode?.toLowerCase().includes(code));
+      return plans.filter((p) =>
+        p.line?.po?.poCode?.toLowerCase().includes(code),
+      );
     }
 
     return plans;
@@ -74,9 +76,9 @@ export class ProductionPlansService {
         'line.colors',
         'line.colors.sizes',
         'workshop',
-        'dailyPlans'
+        'dailyPlans',
       ],
-      relationLoadStrategy: 'query'
+      relationLoadStrategy: 'query',
     });
     if (!plan) throw new NotFoundException(`Plan #${id} not found`);
     if (plan.dailyPlans) plan.dailyPlans.sort((a, b) => a.day - b.day);

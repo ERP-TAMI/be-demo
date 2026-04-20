@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Put,
   Delete,
   Param,
   Body,
@@ -97,7 +98,14 @@ export class PoLinesController {
   @Post(':id/files')
   addFile(
     @Param('id', ParseUUIDPipe) lineId: string,
-    @Body() body: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string },
+    @Body()
+    body: {
+      fileKey: string;
+      originalName: string;
+      label?: string;
+      version?: number;
+      fileGroupId?: string;
+    },
     @Request() req: { user?: { email?: string } },
   ) {
     return this.service.addLineFile(lineId, body, req.user?.email ?? 'system');
@@ -135,6 +143,19 @@ export class PoLinesController {
     return this.service.removeStep(stepId, req.user?.email ?? 'system');
   }
 
+  @Put(':id/as3b-steps/sync')
+  syncSteps(
+    @Param('id', ParseUUIDPipe) lineId: string,
+    @Body('steps') steps: Partial<LineAs3bStep>[],
+    @Request() req: { user?: { email?: string } },
+  ) {
+    return this.service.syncAs3bSteps(
+      lineId,
+      steps ?? [],
+      req.user?.email ?? 'system',
+    );
+  }
+
   // ─── Samples ────────────────────────────────────────────────────────────────
 
   @Get(':id/samples')
@@ -157,7 +178,11 @@ export class PoLinesController {
     @Body() body: Partial<LineSample>,
     @Request() req: { user?: { email?: string } },
   ) {
-    return this.service.updateSample(sampleId, body, req.user?.email ?? 'system');
+    return this.service.updateSample(
+      sampleId,
+      body,
+      req.user?.email ?? 'system',
+    );
   }
 
   // ─── File Mappings ───────────────────────────────────────────────────────────
@@ -168,6 +193,11 @@ export class PoLinesController {
     @Body() body: { fileId: string; lineIds: string[] },
     @Request() req: { user?: { email?: string } },
   ) {
-    return this.service.assignFileToLines(poId, body.fileId, body.lineIds, req.user?.email ?? 'system');
+    return this.service.assignFileToLines(
+      poId,
+      body.fileId,
+      body.lineIds,
+      req.user?.email ?? 'system',
+    );
   }
 }

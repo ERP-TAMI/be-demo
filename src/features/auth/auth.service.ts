@@ -243,7 +243,10 @@ export class AuthService {
    * API PATCH /auth/profile
    * Protected — user tự cập nhật fullName, phone, avatarUrl của mình
    */
-  async updateProfile(userId: string, dto: UpdateProfileDto): Promise<MeResponse> {
+  async updateProfile(
+    userId: string,
+    dto: UpdateProfileDto,
+  ): Promise<MeResponse> {
     const user = await this.userService.findById(userId);
     if (!user) {
       throw new UnauthorizedException('Người dùng không tồn tại');

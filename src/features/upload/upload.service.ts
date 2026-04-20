@@ -91,8 +91,7 @@ export class UploadService {
           ) => {
             if (error || !result?.secure_url) {
               const reason =
-                error?.message ??
-                'Không nhận được secure_url từ Cloudinary.';
+                error?.message ?? 'Không nhận được secure_url từ Cloudinary.';
 
               this.logger.error(
                 `Cloudinary avatar upload failed for ${originalName}: ${reason}`,
