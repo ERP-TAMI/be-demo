@@ -11,6 +11,7 @@ import { LineSample } from './entities/line-sample.entity.js';
 import { SampleColorImage } from './entities/sample-color-image.entity.js';
 import { LineMappedFile } from './entities/line-mapped-file.entity.js';
 import { PoVersionLog } from '../purchase-orders/entities/po-version-log.entity.js';
+import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity.js';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { PoVersionLog } from '../purchase-orders/entities/po-version-log.entity.
       SampleColorImage,
       LineMappedFile,
       PoVersionLog,
+      PurchaseOrder,
     ]),
   ],
   controllers: [PoLinesController],

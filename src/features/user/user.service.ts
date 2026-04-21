@@ -31,7 +31,6 @@ export class UserService {
     return this.userRepository.save(user);
   }
 
-
   /**
    * Cập nhật thông tin sau khi login thành công
    */

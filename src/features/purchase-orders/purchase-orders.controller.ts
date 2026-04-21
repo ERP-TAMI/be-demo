@@ -15,6 +15,7 @@ import {
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto,
 } from './dto/purchase-order.dto.js';
+import { PoStatus } from './entities/purchase-order.entity.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @UseGuards(JwtAuthGuard)
@@ -83,6 +84,19 @@ export class PurchaseOrdersController {
     @Request() req: { user?: { email: string } },
   ) {
     return this.service.finalizePo(id, req.user?.email ?? 'system');
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { status: PoStatus },
+    @Request() req: { user?: { email: string } },
+  ) {
+    return this.service.updateStatus(
+      id,
+      body.status,
+      req.user?.email ?? 'system',
+    );
   }
 
   @Delete(':id')

@@ -43,15 +43,6 @@ export class BomLine {
 
   @Column({
     type: 'decimal',
-    precision: 10,
-    scale: 4,
-    default: 0,
-    name: 'consumption_per_unit',
-  })
-  consumptionPerUnit: number;
-
-  @Column({
-    type: 'decimal',
     precision: 5,
     scale: 2,
     default: 0,
@@ -74,7 +65,7 @@ export class BomLine {
     scale: 2,
     default: 0,
     name: 'line_cost_per_unit',
-    comment: 'consumption * (1 + yield/100) * unit_cost',
+    comment: 'unit_cost * (1 + yield_pct/100)',
   })
   lineCostPerUnit: number;
 }

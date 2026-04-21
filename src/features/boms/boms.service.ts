@@ -57,11 +57,9 @@ export class BomsService {
 
     if (lines.length > 0) {
       for (const line of lines) {
-        const nextConsumption = Number(line.consumptionPerUnit ?? 0);
         const nextYield = Number(line.yieldPct ?? 0);
         const nextUnitCost = Number(line.unitCost ?? 0);
-        const lineCostPerUnit =
-          nextConsumption * (1 + nextYield / 100) * nextUnitCost;
+        const lineCostPerUnit = nextUnitCost * (1 + nextYield / 100);
 
         await this.lineRepo.save(
           this.lineRepo.create({
@@ -70,7 +68,6 @@ export class BomsService {
             materialName: line.materialName ?? '',
             materialGroup: line.materialGroup ?? '',
             unit: line.unit ?? '',
-            consumptionPerUnit: nextConsumption,
             yieldPct: nextYield,
             unitCost: nextUnitCost,
             lineCostPerUnit,
@@ -84,9 +81,14 @@ export class BomsService {
     await this.writeBomLog(created, actor ?? 'system', PoEventType.BOM_CREATED);
 
     if ((created.version || 1) > 1 && created.changeReason) {
-      await this.writeBomLog(created, actor ?? 'system', PoEventType.BOM_REVISED, {
-        reason: created.changeReason,
-      });
+      await this.writeBomLog(
+        created,
+        actor ?? 'system',
+        PoEventType.BOM_REVISED,
+        {
+          reason: created.changeReason,
+        },
+      );
     }
 
     return created;
@@ -109,13 +111,18 @@ export class BomsService {
     const updated = await this.findOne(id);
 
     if (Object.keys(patch).length > 0) {
-      await this.writeBomLog(updated, actor ?? 'system', PoEventType.BOM_UPDATED, {
-        changes: Object.keys(patch).map((field) => ({
-          field,
-          before: bom[field as keyof Bom] ?? null,
-          after: updated[field as keyof Bom] ?? null,
-        })),
-      });
+      await this.writeBomLog(
+        updated,
+        actor ?? 'system',
+        PoEventType.BOM_UPDATED,
+        {
+          changes: Object.keys(patch).map((field) => ({
+            field,
+            before: bom[field as keyof Bom] ?? null,
+            after: updated[field as keyof Bom] ?? null,
+          })),
+        },
+      );
     }
 
     return updated;
@@ -208,9 +215,7 @@ export class BomsService {
       ...dto,
       bomId,
       lineCostPerUnit:
-        Number(dto.consumptionPerUnit ?? 0) *
-        (1 + Number(dto.yieldPct ?? 0) / 100) *
-        Number(dto.unitCost ?? 0),
+        Number(dto.unitCost ?? 0) * (1 + Number(dto.yieldPct ?? 0) / 100),
     });
     const saved = await this.lineRepo.save(line);
 
@@ -248,12 +253,10 @@ export class BomsService {
       bomId: line.bomId,
     };
 
-    const nextConsumption = Number(patched.consumptionPerUnit ?? 0);
     const nextYield = Number(patched.yieldPct ?? 0);
     const nextUnitCost = Number(patched.unitCost ?? 0);
 
-    patched.lineCostPerUnit =
-      nextConsumption * (1 + nextYield / 100) * nextUnitCost;
+    patched.lineCostPerUnit = nextUnitCost * (1 + nextYield / 100);
 
     const saved = await this.lineRepo.save(patched);
     await this.recomputeTotal(bomId);
@@ -334,15 +337,10 @@ export class BomsService {
     if (nextStatus === BomStatus.WAIT_PRICE) {
       const isRdComplete =
         lines.length > 0 &&
-        lines.every(
-          (line) =>
-            line.consumptionPerUnit != null &&
-            Number(line.consumptionPerUnit) > 0 &&
-            line.yieldPct != null,
-        );
+        lines.every((line) => line.yieldPct != null);
       if (!isRdComplete) {
         throw new BadRequestException(
-          'Cannot move to Wait_Price: missing consumption/yield data',
+          'Cannot move to Wait_Price: missing yield data',
         );
       }
     }

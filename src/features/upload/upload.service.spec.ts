@@ -44,7 +44,10 @@ describe('UploadService', () => {
   it('rejects with a clear error when Cloudinary config is missing', async () => {
     configService.get.mockReturnValue(undefined);
     service = new UploadService(configService);
-    const uploadPromise = service.uploadAvatar(Buffer.from('avatar'), 'avatar.png');
+    const uploadPromise = service.uploadAvatar(
+      Buffer.from('avatar'),
+      'avatar.png',
+    );
 
     await expect(uploadPromise).rejects.toThrow(InternalServerErrorException);
 
@@ -104,7 +107,10 @@ describe('UploadService', () => {
         return createWritableUploadStream();
       },
     );
-    const uploadPromise = service.uploadAvatar(Buffer.from('avatar'), 'avatar.png');
+    const uploadPromise = service.uploadAvatar(
+      Buffer.from('avatar'),
+      'avatar.png',
+    );
 
     await expect(uploadPromise).rejects.toThrow(InternalServerErrorException);
 

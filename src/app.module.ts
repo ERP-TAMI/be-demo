@@ -14,6 +14,7 @@ import { BomsModule } from './features/boms/boms.module.js';
 import { ProductionPlansModule } from './features/production-plans/production-plans.module.js';
 import { UploadsModule } from './features/uploads/uploads.module.js';
 import { UploadModule } from './features/upload/upload.module.js';
+import { ProductionDocsModule } from './features/production-docs/production-docs.module.js';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { UploadModule } from './features/upload/upload.module.js';
     ProductionPlansModule,
     UploadsModule,
     UploadModule,
+    ProductionDocsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

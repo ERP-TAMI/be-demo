@@ -349,44 +349,204 @@ async function seed() {
   console.log('🌱 Seeding stages...');
   const stageRepo = AppDataSource.getRepository(Stage);
   const stagesData = [
-    { stageCode: 'GD-CAT', stageName: 'Cắt vải', description: 'Cắt theo rập', smv: 0.083 },
-    { stageCode: 'GD-RAP-VAI', stageName: 'Ráp vai', description: 'Ráp vai trước - sau', smv: 0.133 },
-    { stageCode: 'GD-GAN-TAY', stageName: 'Gắn tay áo', description: 'Ráp tay vào thân', smv: 0.167 },
-    { stageCode: 'GD-MAY-CO', stageName: 'May cổ', description: 'Gắn cổ áo', smv: 0.200 },
-    { stageCode: 'GD-VIEN-GAU', stageName: 'Viền gấu', description: 'Viền gấu áo / quần', smv: 0.100 },
-    { stageCode: 'GD-DINH-NUT', stageName: 'Đính nút', description: 'Đính nút', smv: 0.117 },
-    { stageCode: 'GD-KCS-NB', stageName: 'KCS nội bộ', description: 'Kiểm tra trước đóng gói', smv: 0.050 },
-    { stageCode: 'GD-MAY-DUNG', stageName: 'May đũng', description: 'May đũng quần trước - sau', smv: 0.167 },
-    { stageCode: 'GD-RAP-ONG', stageName: 'Ráp ống quần', description: 'Ráp 2 ống quần', smv: 0.133 },
-    { code: 'GD-LON-ONG', name: 'Lộn ống quần', description: 'Viền gấu ống', smv: 0.117 },
-    { code: 'GD-DINH-MOC', name: 'Đính móc khóa', description: 'Gắn móc + khóa kéo', smv: 0.083 },
-    { code: 'GD-MAY-THAN-T', name: 'May thân trước', description: 'May các chi tiết thân trước', smv: 0.250 },
-    { code: 'GD-MAY-THAN-S', name: 'May thân sau', description: 'May nối thân sau', smv: 0.100 },
-    { code: 'GD-MAY-TAY', name: 'May tay áo', description: 'May tay áo', smv: 0.200 },
-    { stageCode: 'GD-MAY-CAP', stageName: 'May cạp', description: 'May cạp quần', smv: 0.100 },
+    {
+      stageCode: 'GD-CAT',
+      stageName: 'Cắt vải',
+      description: 'Cắt theo rập',
+      smv: 0.083,
+    },
+    {
+      stageCode: 'GD-RAP-VAI',
+      stageName: 'Ráp vai',
+      description: 'Ráp vai trước - sau',
+      smv: 0.133,
+    },
+    {
+      stageCode: 'GD-GAN-TAY',
+      stageName: 'Gắn tay áo',
+      description: 'Ráp tay vào thân',
+      smv: 0.167,
+    },
+    {
+      stageCode: 'GD-MAY-CO',
+      stageName: 'May cổ',
+      description: 'Gắn cổ áo',
+      smv: 0.2,
+    },
+    {
+      stageCode: 'GD-VIEN-GAU',
+      stageName: 'Viền gấu',
+      description: 'Viền gấu áo / quần',
+      smv: 0.1,
+    },
+    {
+      stageCode: 'GD-DINH-NUT',
+      stageName: 'Đính nút',
+      description: 'Đính nút',
+      smv: 0.117,
+    },
+    {
+      stageCode: 'GD-KCS-NB',
+      stageName: 'KCS nội bộ',
+      description: 'Kiểm tra trước đóng gói',
+      smv: 0.05,
+    },
+    {
+      stageCode: 'GD-MAY-DUNG',
+      stageName: 'May đũng',
+      description: 'May đũng quần trước - sau',
+      smv: 0.167,
+    },
+    {
+      stageCode: 'GD-RAP-ONG',
+      stageName: 'Ráp ống quần',
+      description: 'Ráp 2 ống quần',
+      smv: 0.133,
+    },
+    {
+      code: 'GD-LON-ONG',
+      name: 'Lộn ống quần',
+      description: 'Viền gấu ống',
+      smv: 0.117,
+    },
+    {
+      code: 'GD-DINH-MOC',
+      name: 'Đính móc khóa',
+      description: 'Gắn móc + khóa kéo',
+      smv: 0.083,
+    },
+    {
+      code: 'GD-MAY-THAN-T',
+      name: 'May thân trước',
+      description: 'May các chi tiết thân trước',
+      smv: 0.25,
+    },
+    {
+      code: 'GD-MAY-THAN-S',
+      name: 'May thân sau',
+      description: 'May nối thân sau',
+      smv: 0.1,
+    },
+    {
+      code: 'GD-MAY-TAY',
+      name: 'May tay áo',
+      description: 'May tay áo',
+      smv: 0.2,
+    },
+    {
+      stageCode: 'GD-MAY-CAP',
+      stageName: 'May cạp',
+      description: 'May cạp quần',
+      smv: 0.1,
+    },
     { code: 'GD-VIEN-CO', name: 'Viền cổ', description: 'Viền cổ', smv: 0.067 },
-    { code: 'GD-VIEN-LO-TAY', name: 'Viền lỗ tay', description: 'Viền 2 lỗ tay áo', smv: 0.067 },
-    { code: 'GD-MAY-CO-POLO', name: 'May cổ polo', description: 'Gắn cổ polo', smv: 0.167 },
-    { code: 'GD-MAY-THAN', name: 'May thân', description: 'May thân áo/váy', smv: 0.333 },
-    { stageCode: 'GD-MAY-FERMATURE', stageName: 'May fermeture', description: 'Gắn khóa kéo', smv: 0.133 },
-    { code: 'GD-DET-THAN', name: 'Dệt thân áo', description: 'Dệt theo chương trình', smv: 0.750 },
-    { code: 'GD-DET-TAY', name: 'Dệt tay áo', description: 'Dệt 2 tay áo', smv: 0.500 },
-    { code: 'GD-DET-CO', name: 'Dệt cổ lọ', description: 'Dệt phần cổ lọ', smv: 0.250 },
-    { code: 'GD-RAP-AO', name: 'Ráp áo', description: 'Nối các phần lại với nhau', smv: 0.333 },
-    { code: 'GD-KCS-CUOI', name: 'KCS cuối', description: 'Kiểm tra toàn bộ', smv: 0.083 },
-    { code: 'GD-MAY-MANG-SET', name: 'May măng sét', description: 'May măng sét tay', smv: 0.133 },
-    { code: 'GD-RAP-TAY-COC', name: 'Ráp tay cộc', description: 'Gắn tay cộc', smv: 0.067 },
-    { code: 'GD-CAT-AO', name: 'Cắt vải áo', description: 'Cắt thân áo', smv: 0.050 },
-    { code: 'GD-CAT-QUAN', name: 'Cắt vải quần', description: 'Cắt thân quần', smv: 0.050 },
-    { code: 'GD-MAY-AO', name: 'May áo', description: 'May toàn bộ áo', smv: 0.133 },
-    { code: 'GD-MAY-QUAN', name: 'May quần', description: 'May toàn bộ quần', smv: 0.117 },
-    { stageCode: 'GD-IN-LUNG', stageName: 'In logo lưng', description: 'In nhiệt logo thương hiệu', smv: 0.050 },
-    { stageCode: 'GD-DONG-GOI', stageName: 'Đóng gói', description: 'Gấp, túi PE, thùng carton', smv: 0.067 },
-  ].map(s => ({
+    {
+      code: 'GD-VIEN-LO-TAY',
+      name: 'Viền lỗ tay',
+      description: 'Viền 2 lỗ tay áo',
+      smv: 0.067,
+    },
+    {
+      code: 'GD-MAY-CO-POLO',
+      name: 'May cổ polo',
+      description: 'Gắn cổ polo',
+      smv: 0.167,
+    },
+    {
+      code: 'GD-MAY-THAN',
+      name: 'May thân',
+      description: 'May thân áo/váy',
+      smv: 0.333,
+    },
+    {
+      stageCode: 'GD-MAY-FERMATURE',
+      stageName: 'May fermeture',
+      description: 'Gắn khóa kéo',
+      smv: 0.133,
+    },
+    {
+      code: 'GD-DET-THAN',
+      name: 'Dệt thân áo',
+      description: 'Dệt theo chương trình',
+      smv: 0.75,
+    },
+    {
+      code: 'GD-DET-TAY',
+      name: 'Dệt tay áo',
+      description: 'Dệt 2 tay áo',
+      smv: 0.5,
+    },
+    {
+      code: 'GD-DET-CO',
+      name: 'Dệt cổ lọ',
+      description: 'Dệt phần cổ lọ',
+      smv: 0.25,
+    },
+    {
+      code: 'GD-RAP-AO',
+      name: 'Ráp áo',
+      description: 'Nối các phần lại với nhau',
+      smv: 0.333,
+    },
+    {
+      code: 'GD-KCS-CUOI',
+      name: 'KCS cuối',
+      description: 'Kiểm tra toàn bộ',
+      smv: 0.083,
+    },
+    {
+      code: 'GD-MAY-MANG-SET',
+      name: 'May măng sét',
+      description: 'May măng sét tay',
+      smv: 0.133,
+    },
+    {
+      code: 'GD-RAP-TAY-COC',
+      name: 'Ráp tay cộc',
+      description: 'Gắn tay cộc',
+      smv: 0.067,
+    },
+    {
+      code: 'GD-CAT-AO',
+      name: 'Cắt vải áo',
+      description: 'Cắt thân áo',
+      smv: 0.05,
+    },
+    {
+      code: 'GD-CAT-QUAN',
+      name: 'Cắt vải quần',
+      description: 'Cắt thân quần',
+      smv: 0.05,
+    },
+    {
+      code: 'GD-MAY-AO',
+      name: 'May áo',
+      description: 'May toàn bộ áo',
+      smv: 0.133,
+    },
+    {
+      code: 'GD-MAY-QUAN',
+      name: 'May quần',
+      description: 'May toàn bộ quần',
+      smv: 0.117,
+    },
+    {
+      stageCode: 'GD-IN-LUNG',
+      stageName: 'In logo lưng',
+      description: 'In nhiệt logo thương hiệu',
+      smv: 0.05,
+    },
+    {
+      stageCode: 'GD-DONG-GOI',
+      stageName: 'Đóng gói',
+      description: 'Gấp, túi PE, thùng carton',
+      smv: 0.067,
+    },
+  ].map((s) => ({
     stageCode: s.stageCode || s.code,
     stageName: s.stageName || s.name,
     description: s.description,
-    smv: s.smv
+    smv: s.smv,
   }));
 
   for (const s of stagesData) {
@@ -1146,10 +1306,30 @@ async function seed() {
       deadline: '2024-06-20',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-009', consumptionPerUnit: 1.18, yieldPct: 10, unitCost: 135000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.12, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'PL-003', consumptionPerUnit: 1, yieldPct: 3, unitCost: 5500 },
-        { materialCode: 'NB-002', consumptionPerUnit: 1, yieldPct: 2, unitCost: 1200 },
+        {
+          materialCode: 'VT-009',
+          consumptionPerUnit: 1.18,
+          yieldPct: 10,
+          unitCost: 135000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.12,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'PL-003',
+          consumptionPerUnit: 1,
+          yieldPct: 3,
+          unitCost: 5500,
+        },
+        {
+          materialCode: 'NB-002',
+          consumptionPerUnit: 1,
+          yieldPct: 2,
+          unitCost: 1200,
+        },
       ],
     },
     {
@@ -1164,10 +1344,30 @@ async function seed() {
       deadline: '2024-07-10',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-004', consumptionPerUnit: 0.82, yieldPct: 8, unitCost: 110000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.09, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'PL-005', consumptionPerUnit: 0.32, yieldPct: 8, unitCost: 12000 },
-        { materialCode: 'NB-001', consumptionPerUnit: 1, yieldPct: 2, unitCost: 2500 },
+        {
+          materialCode: 'VT-004',
+          consumptionPerUnit: 0.82,
+          yieldPct: 8,
+          unitCost: 110000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.09,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'PL-005',
+          consumptionPerUnit: 0.32,
+          yieldPct: 8,
+          unitCost: 12000,
+        },
+        {
+          materialCode: 'NB-001',
+          consumptionPerUnit: 1,
+          yieldPct: 2,
+          unitCost: 2500,
+        },
       ],
     },
     {
@@ -1182,9 +1382,24 @@ async function seed() {
       deadline: '2024-03-10',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-004', consumptionPerUnit: 0.9, yieldPct: 8, unitCost: 110000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'PL-005', consumptionPerUnit: 0.3, yieldPct: 8, unitCost: 12000 },
+        {
+          materialCode: 'VT-004',
+          consumptionPerUnit: 0.9,
+          yieldPct: 8,
+          unitCost: 110000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'PL-005',
+          consumptionPerUnit: 0.3,
+          yieldPct: 8,
+          unitCost: 12000,
+        },
       ],
     },
     {
@@ -1199,9 +1414,24 @@ async function seed() {
       deadline: '2024-03-12',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-009', consumptionPerUnit: 0.88, yieldPct: 10, unitCost: 135000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'NB-003', consumptionPerUnit: 1, yieldPct: 3, unitCost: 3800 },
+        {
+          materialCode: 'VT-009',
+          consumptionPerUnit: 0.88,
+          yieldPct: 10,
+          unitCost: 135000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'NB-003',
+          consumptionPerUnit: 1,
+          yieldPct: 3,
+          unitCost: 3800,
+        },
       ],
     },
     {
@@ -1216,9 +1446,24 @@ async function seed() {
       deadline: '2024-09-01',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-004', consumptionPerUnit: 0.84, yieldPct: 8, unitCost: 110000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.09, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'NB-001', consumptionPerUnit: 1, yieldPct: 2, unitCost: 2500 },
+        {
+          materialCode: 'VT-004',
+          consumptionPerUnit: 0.84,
+          yieldPct: 8,
+          unitCost: 110000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.09,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'NB-001',
+          consumptionPerUnit: 1,
+          yieldPct: 2,
+          unitCost: 2500,
+        },
       ],
     },
     {
@@ -1233,9 +1478,24 @@ async function seed() {
       deadline: '2024-09-20',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-004', consumptionPerUnit: 0.92, yieldPct: 8, unitCost: 110000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'PL-002', consumptionPerUnit: 3, yieldPct: 2, unitCost: 800 },
+        {
+          materialCode: 'VT-004',
+          consumptionPerUnit: 0.92,
+          yieldPct: 8,
+          unitCost: 110000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'PL-002',
+          consumptionPerUnit: 3,
+          yieldPct: 2,
+          unitCost: 800,
+        },
       ],
     },
     {
@@ -1250,9 +1510,24 @@ async function seed() {
       deadline: '2024-09-22',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-004', consumptionPerUnit: 0.9, yieldPct: 8, unitCost: 110000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'NB-003', consumptionPerUnit: 1, yieldPct: 3, unitCost: 3800 },
+        {
+          materialCode: 'VT-004',
+          consumptionPerUnit: 0.9,
+          yieldPct: 8,
+          unitCost: 110000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'NB-003',
+          consumptionPerUnit: 1,
+          yieldPct: 3,
+          unitCost: 3800,
+        },
       ],
     },
     {
@@ -1267,9 +1542,24 @@ async function seed() {
       deadline: '2026-05-03',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-001', consumptionPerUnit: 1.5, yieldPct: 12, unitCost: 85000 },
-        { materialCode: 'PL-004', consumptionPerUnit: 0.2, yieldPct: 5, unitCost: 15000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
+        {
+          materialCode: 'VT-001',
+          consumptionPerUnit: 1.5,
+          yieldPct: 12,
+          unitCost: 85000,
+        },
+        {
+          materialCode: 'PL-004',
+          consumptionPerUnit: 0.2,
+          yieldPct: 5,
+          unitCost: 15000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
       ],
     },
     {
@@ -1284,9 +1574,24 @@ async function seed() {
       deadline: '2026-05-10',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-009', consumptionPerUnit: 1.22, yieldPct: 10, unitCost: 135000 },
-        { materialCode: 'PL-003', consumptionPerUnit: 1, yieldPct: 3, unitCost: 5500 },
-        { materialCode: 'NB-002', consumptionPerUnit: 1, yieldPct: 2, unitCost: 1200 },
+        {
+          materialCode: 'VT-009',
+          consumptionPerUnit: 1.22,
+          yieldPct: 10,
+          unitCost: 135000,
+        },
+        {
+          materialCode: 'PL-003',
+          consumptionPerUnit: 1,
+          yieldPct: 3,
+          unitCost: 5500,
+        },
+        {
+          materialCode: 'NB-002',
+          consumptionPerUnit: 1,
+          yieldPct: 2,
+          unitCost: 1200,
+        },
       ],
     },
     {
@@ -1301,9 +1606,24 @@ async function seed() {
       deadline: '2026-05-14',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-009', consumptionPerUnit: 1.2, yieldPct: 10, unitCost: 135000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.12, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'PL-003', consumptionPerUnit: 1, yieldPct: 3, unitCost: 5500 },
+        {
+          materialCode: 'VT-009',
+          consumptionPerUnit: 1.2,
+          yieldPct: 10,
+          unitCost: 135000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.12,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'PL-003',
+          consumptionPerUnit: 1,
+          yieldPct: 3,
+          unitCost: 5500,
+        },
       ],
     },
     {
@@ -1318,9 +1638,24 @@ async function seed() {
       deadline: '2024-09-25',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-004', consumptionPerUnit: 0.95, yieldPct: 8, unitCost: 110000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'NB-001', consumptionPerUnit: 1, yieldPct: 2, unitCost: 2500 },
+        {
+          materialCode: 'VT-004',
+          consumptionPerUnit: 0.95,
+          yieldPct: 8,
+          unitCost: 110000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'NB-001',
+          consumptionPerUnit: 1,
+          yieldPct: 2,
+          unitCost: 2500,
+        },
       ],
     },
     {
@@ -1335,9 +1670,24 @@ async function seed() {
       deadline: '2024-06-01',
       totalCostPerUnit: 0,
       lines: [
-        { materialCode: 'VT-001', consumptionPerUnit: 1.4, yieldPct: 12, unitCost: 85000 },
-        { materialCode: 'PL-001', consumptionPerUnit: 0.1, yieldPct: 5, unitCost: 18000 },
-        { materialCode: 'PL-002', consumptionPerUnit: 5, yieldPct: 2, unitCost: 800 },
+        {
+          materialCode: 'VT-001',
+          consumptionPerUnit: 1.4,
+          yieldPct: 12,
+          unitCost: 85000,
+        },
+        {
+          materialCode: 'PL-001',
+          consumptionPerUnit: 0.1,
+          yieldPct: 5,
+          unitCost: 18000,
+        },
+        {
+          materialCode: 'PL-002',
+          consumptionPerUnit: 5,
+          yieldPct: 2,
+          unitCost: 800,
+        },
       ],
     },
   );
@@ -1370,8 +1720,7 @@ async function seed() {
     let total = 0;
     for (const line of b.lines) {
       const mat = savedMaterials[line.materialCode];
-      const lineCost =
-        line.consumptionPerUnit * (1 + line.yieldPct / 100) * line.unitCost;
+      const lineCost = line.unitCost * (1 + line.yieldPct / 100);
       total += lineCost;
       await bomLineRepo.save(
         bomLineRepo.create({
@@ -1380,7 +1729,6 @@ async function seed() {
           materialName: mat?.materialName ?? line.materialCode,
           materialGroup: mat?.materialGroup ?? 'Phụ liệu',
           unit: mat?.unit ?? 'Cái',
-          consumptionPerUnit: line.consumptionPerUnit,
           yieldPct: line.yieldPct,
           unitCost: line.unitCost,
           lineCostPerUnit: lineCost,
