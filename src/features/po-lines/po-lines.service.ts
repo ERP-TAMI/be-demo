@@ -50,7 +50,7 @@ export class PoLinesService {
     private readonly logRepo: Repository<PoVersionLog>,
     @InjectRepository(PurchaseOrder)
     private readonly poRepo: Repository<PurchaseOrder>,
-  ) {}
+  ) { }
 
   private async writeLineLog(
     line: PoLine,
