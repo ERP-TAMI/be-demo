@@ -15,6 +15,12 @@ import { ProductionPlansModule } from './features/production-plans/production-pl
 import { UploadsModule } from './features/uploads/uploads.module.js';
 import { UploadModule } from './features/upload/upload.module.js';
 import { ProductionDocsModule } from './features/production-docs/production-docs.module.js';
+import { StylesModule } from './features/styles/styles.module.js';
+import { ColorsModule } from './features/colors/colors.module.js';
+import { SamplesModule } from './features/samples/samples.module.js';
+import { DraftBomsModule } from './features/draft-boms/draft-boms.module.js';
+import { MasterPosModule } from './features/master-pos/master-pos.module.js';
+import { DocFoldersModule } from './features/doc-folders/doc-folders.module.js';
 
 @Module({
   imports: [
@@ -35,6 +41,12 @@ import { ProductionDocsModule } from './features/production-docs/production-docs
     UploadsModule,
     UploadModule,
     ProductionDocsModule,
+    StylesModule,
+    ColorsModule,
+    SamplesModule,
+    DraftBomsModule,
+    MasterPosModule,
+    DocFoldersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
