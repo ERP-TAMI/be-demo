@@ -36,6 +36,23 @@ services:
       timeout: 20s
       retries: 3
 
+  minio-init:
+    image: minio/mc:latest
+    container_name: erp_minio_init
+    depends_on:
+      minio:
+        condition: service_started
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to start...';
+      sleep 5;
+      mc alias set local http://minio:9000 ${MINIO_ACCESS_KEY:-minioadmin} ${MINIO_SECRET_KEY:-minioadmin};
+      mc mb local/${MINIO_BUCKET:-erp-files} --ignore-existing;
+      mc anonymous set download local/${MINIO_BUCKET:-erp-files};
+      echo 'MinIO bucket erp-files initialized successfully!';
+      exit 0;
+      "
+
 volumes:
   postgres_data:
   minio_data:
