@@ -4,10 +4,12 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  OneToOne,
   JoinColumn,
 } from 'typeorm';
 import { PoLine } from './po-line.entity.js';
 import { LineColorSize } from './line-color-size.entity.js';
+import { LineColorCard } from './line-color-card.entity.js';
 
 @Entity('line_colors')
 export class LineColor {
@@ -26,4 +28,7 @@ export class LineColor {
 
   @OneToMany(() => LineColorSize, (s) => s.color, { cascade: true })
   sizes: LineColorSize[];
+
+  @OneToOne(() => LineColorCard, (card) => card.lineColor, { cascade: true })
+  colorCard: LineColorCard;
 }

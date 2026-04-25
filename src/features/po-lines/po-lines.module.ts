@@ -10,6 +10,7 @@ import { LineAs3bStep } from './entities/line-as3b-step.entity.js';
 import { LineSample } from './entities/line-sample.entity.js';
 import { SampleColorImage } from './entities/sample-color-image.entity.js';
 import { LineMappedFile } from './entities/line-mapped-file.entity.js';
+import { LineColorCard } from './entities/line-color-card.entity.js';
 import { PoVersionLog } from '../purchase-orders/entities/po-version-log.entity.js';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity.js';
 
@@ -24,6 +25,7 @@ import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity
       LineSample,
       SampleColorImage,
       LineMappedFile,
+      LineColorCard,
       PoVersionLog,
       PurchaseOrder,
     ]),
