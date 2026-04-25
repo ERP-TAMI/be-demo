@@ -4,7 +4,6 @@ import {
   Column,
   OneToOne,
   JoinColumn,
-  CreateDateColumn,
 } from 'typeorm';
 import { LineColor } from './line-color.entity.js';
 
@@ -29,7 +28,7 @@ export class LineColorCard {
   @Column({ type: 'uuid', name: 'uploaded_by' })
   uploadedBy: string;
 
-  @CreateDateColumn({ type: 'timestamptz', name: 'uploaded_at' })
+  @Column({ type: 'timestamptz', name: 'uploaded_at', default: () => 'now()' })
   uploadedAt: Date;
 
   @Column({
