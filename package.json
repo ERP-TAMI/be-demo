@@ -25,8 +25,8 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d",
-    "seed": "npm run build && node dist/database/seeds/seed-users.js",
-    "seed:all": "npm run build && node dist/database/seeds/seed-all.js"
+    "seed": "npm run build && node dist/src/database/seeds/seed-users.js",
+    "seed:all": "npm run build && node dist/src/database/seeds/seed-all.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
@@ -98,6 +98,9 @@
     "collectCoverageFrom": [
       "**/*.(t|j)s"
     ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    },
     "coverageDirectory": "../coverage",
     "testEnvironment": "node"
   }

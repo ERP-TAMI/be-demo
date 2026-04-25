@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RefactorStyleColorMasterPo1700000000000
+export class RefactorStyleColorMasterPo1777000000000
   implements MigrationInterface
 {
-  name = 'RefactorStyleColorMasterPo1700000000000';
+  name = 'RefactorStyleColorMasterPo1777000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // ========== SECTION 1: Tao bang moi ==========

@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Controller,
+  ForbiddenException,
   Get,
   Post,
   Patch,
@@ -10,18 +12,28 @@ import {
   ParseUUIDPipe,
   UseGuards,
   Request,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { PoLinesService } from './po-lines.service.js';
 import { LineStatus, PoLine } from './entities/po-line.entity.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { LineAs3bStep } from './entities/line-as3b-step.entity.js';
 import { LineSample } from './entities/line-sample.entity.js';
 import { UserRole } from '../user/entities/user.entity.js';
+import { ColorCardService } from './color-card.service.js';
+
+const MAX_COLOR_CARD_SIZE = 20 * 1024 * 1024; // 20 MB
+const ALLOWED_COLOR_CARD_TYPES = ['image/jpeg', 'image/png'];
 
 @UseGuards(JwtAuthGuard)
 @Controller('purchase-orders/:poId/lines')
 export class PoLinesController {
-  constructor(private readonly service: PoLinesService) {}
+  constructor(
+    private readonly service: PoLinesService,
+    private readonly colorCardService: ColorCardService,
+  ) {}
 
   @Get()
   findAll(@Param('poId', ParseUUIDPipe) poId: string) {
@@ -199,5 +211,65 @@ export class PoLinesController {
       body.lineIds,
       req.user?.email ?? 'system',
     );
+  }
+
+  // ─── Color Card (Bảng màu) ─────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/purchase-orders/:poId/lines/colors/:colorId/color-card
+   * Lấy thông tin bảng màu hiện tại + presigned URL để preview.
+   * Trả về null nếu chưa có.
+   */
+  @Get('colors/:colorId/color-card')
+  getColorCard(
+    @Param('poId', ParseUUIDPipe) poId: string,
+    @Param('colorId', ParseUUIDPipe) colorId: string,
+  ) {
+    return this.colorCardService.getColorCard(poId, colorId);
+  }
+
+  /**
+   * POST /api/v1/purchase-orders/:poId/lines/colors/:colorId/color-card
+   * Upload bảng màu mới (insert) hoặc thay thế bảng màu cũ (update đè).
+   * Body: multipart/form-data — field "file" (JPG/PNG, tối đa 20MB) + field "reason" (string)
+   */
+  @Post('colors/:colorId/color-card')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_COLOR_CARD_SIZE },
+      fileFilter: (_req, file, callback) => {
+        if (!ALLOWED_COLOR_CARD_TYPES.includes(file.mimetype)) {
+          return callback(
+            new BadRequestException('Bảng màu chỉ chấp nhận file JPG hoặc PNG'),
+            false,
+          );
+        }
+        callback(null, true);
+      },
+    }),
+  )
+  async uploadColorCard(
+    @Param('poId', ParseUUIDPipe) poId: string,
+    @Param('colorId', ParseUUIDPipe) colorId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('reason') reason: string | undefined,
+    @Request() req: { user?: { id?: string; email?: string; role?: UserRole } },
+  ) {
+    if (!file) {
+      throw new BadRequestException('Vui lòng chọn file ảnh bảng màu');
+    }
+    if (!req.user?.role) {
+      throw new ForbiddenException('Khong xac dinh duoc vai tro nguoi dung');
+    }
+    return this.colorCardService.upsertColorCard({
+      poId,
+      colorId,
+      buffer: file.buffer,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      actorId: req.user?.id ?? req.user?.email ?? 'system',
+      actorRole: req.user.role,
+      reason,
+    });
   }
 }
