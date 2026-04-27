@@ -114,3 +114,103 @@ Rồi generate migration: `npm run migration:generate -- src/database/migrations
 | `@nestjs/config`     | `.env` configuration       |
 | `class-validator`    | DTO validation decorators  |
 | `class-transformer`  | Object transformation      |
+
+---
+
+## Git Conventions
+
+### Branch naming
+`feature/<TenNgan>_<TenChucNang>` — ví dụ: `feature/Nam_PO`, `feature/Thang_KeHoachSanXuat`
+
+Branch luôn đi từ `main`, push lên remote tương ứng (`origin`), tạo PR khi xong.
+
+### Commit message prefix
+- `feat:` — tính năng mới
+- `fix:` — bug fix
+- `refactor:` — refactor không đổi behavior
+- `chore:` — tooling, deps, config
+- `docs:` — chỉ sửa docs/README/CLAUDE.md
+
+Format:
+```
+feat: <tóm tắt 1 dòng — focus vào WHY hơn WHAT>
+
+- gạch đầu dòng chi tiết (optional)
+- ngôn ngữ tiếng Việt OK
+```
+
+KHÔNG dùng `--no-verify` để skip hook trừ khi user yêu cầu rõ ràng.
+
+---
+
+## Feature Modules Summary
+
+### `auth/`
+JWT authentication. `POST /auth/login` → `{ accessToken, user }`. Demo nên không có refresh token.
+
+### `users/`
+User CRUD. Field `mustChangePassword` để force đổi mật khẩu lần đầu (nhưng seed `seed-all.ts` set `false` cho test nhanh).
+
+### `masters/`
+Master data: `materials`, `suppliers`, `customers`, `colors`, `styles`, `master-pos`. Soft status (`active`/`inactive`). Material có `lastUnitCost` lưu giá gần nhất (chỉ tham khảo, không auto-fill BOM).
+
+### `purchase-orders/`
+PO lifecycle: `Draft → Pending_RD → In_Progress → PO_Final → Cancelled`.
+- `po.entity.ts` — PO header
+- `po-line.entity.ts` — PO line items (1 line = 1 style + color + size run)
+- `po-version-log.entity.ts` — audit log event-based; `PoEventType` enum bao gồm cả `BOM_*` events (BOM dùng chung audit log với PO)
+
+### `boms/`
+**BOM = định mức NPL cho từng PO line.** Workflow đa vai trò:
+
+```
+Draft → Wait_RD → Wait_TP_Approve → Wait_Price → Wait_SA_Approve → Approved → Locked
+```
+
+| Stage | Actor | Hành động |
+|---|---|---|
+| `Draft` | NVKH/TPKH | Tạo BOM, nhập tên/nhóm/ĐVT vật tư |
+| `Wait_RD` | R&D | Nhập `consumptionPerUnit` (định mức tiêu hao) |
+| `Wait_TP_Approve` | TPKH | Review số lượng định mức |
+| `Wait_Price` | KT | Nhập `unitCost` (đơn giá NPL) |
+| `Wait_SA_Approve` | SA | Duyệt final |
+| `Approved → Locked` | system | Auto |
+
+**Cost formula (cố định 3% wastage):**
+```
+lineCostPerUnit = consumptionPerUnit × 1.03 × unitCost
+totalCostPerUnit = SUM(lineCostPerUnit)  (recompute mọi lúc line thay đổi)
+```
+
+**Files:**
+- `boms.service.ts` — toàn bộ business logic
+  - `validTransitions` — bảng cho phép/cấm transition giữa các status
+  - `assertTransitionDataReady` — check data đủ trước khi chuyển status (R&D phải có consumption > 0, KT phải có unitCost > 0, ...)
+  - `assertEditableBomForLineChange` — chỉ `Draft`/`Wait_RD`/`Wait_Price` được sửa lines
+  - `recomputeTotal` — chạy sau mọi line CRUD
+  - `writeBomLog` — helper ghi audit log với `BOM_*` event types
+- `entities/bom.entity.ts` — header (styleId, masterPoId, version, status, approvedBy, totalCostPerUnit, ...)
+- `entities/bom-line.entity.ts` — line (consumptionPerUnit DECIMAL(10,4), unitCost DECIMAL(15,2), lineCostPerUnit, createdAt cho stable ordering)
+
+**Visibility rules (FE enforce):**
+- `consumptionPerUnit` (định mức): mọi role đều thấy
+- `unitCost`, `lineCostPerUnit`, `SL cần mua`, totals: chỉ KT/SA
+
+---
+
+## Database Seeding
+
+```bash
+npm run db:reset && npm run migration:run && npm run seed
+```
+
+`seed-all.ts` tạo: 6 users + sample masters + sample POs + BOMs demo. Tài khoản test (password `Admin@123`):
+
+| Email | Role |
+|---|---|
+| `admin@erp.local` | Admin |
+| `sa@erp.local` | Giám đốc (duyệt cuối) |
+| `tpkh@erp.local` | TP Kế hoạch |
+| `nvkh@erp.local` | NV Kế hoạch |
+| `rd@erp.local` | R&D |
+| `kt@erp.local` | Kế toán |
