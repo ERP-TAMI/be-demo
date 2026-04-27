@@ -2,6 +2,7 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  CreateDateColumn,
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
@@ -43,10 +44,21 @@ export class BomLine {
 
   @Column({
     type: 'decimal',
+    precision: 10,
+    scale: 4,
+    default: 0,
+    name: 'consumption_per_unit',
+    comment: 'Định mức tiêu hao: số NPL thực tế/SP, do R&D nhập',
+  })
+  consumptionPerUnit: number;
+
+  @Column({
+    type: 'decimal',
     precision: 5,
     scale: 2,
     default: 0,
     name: 'yield_pct',
+    comment: 'Tỷ lệ dự trữ %, cố định 3% — hệ thống tự set',
   })
   yieldPct: number;
 
@@ -65,7 +77,10 @@ export class BomLine {
     scale: 2,
     default: 0,
     name: 'line_cost_per_unit',
-    comment: 'unit_cost * (1 + yield_pct/100)',
+    comment: 'consumption_per_unit * 1.03 * unit_cost (wastage 3% cố định)',
   })
   lineCostPerUnit: number;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt: Date;
 }

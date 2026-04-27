@@ -30,7 +30,7 @@ export class BomsService {
     return this.bomRepo.find({
       where,
       relations: ['bomLines'],
-      order: { createdAt: 'DESC' },
+      order: { createdAt: 'DESC', bomLines: { createdAt: 'ASC' } },
     });
   }
 
@@ -38,9 +38,16 @@ export class BomsService {
     const bom = await this.bomRepo.findOne({
       where: { id },
       relations: ['bomLines', 'bomLines.masterMaterial'],
+      order: { bomLines: { createdAt: 'ASC' } },
     });
     if (!bom) throw new NotFoundException(`BOM #${id} not found`);
     return bom;
+  }
+
+  private static readonly WASTAGE = 1.03;
+
+  private calcLineCost(consumptionPerUnit: number, unitCost: number): number {
+    return consumptionPerUnit * BomsService.WASTAGE * unitCost;
   }
 
   async create(dto: Partial<Bom>, actor?: string): Promise<Bom> {
@@ -57,9 +64,9 @@ export class BomsService {
 
     if (lines.length > 0) {
       for (const line of lines) {
-        const nextYield = Number(line.yieldPct ?? 0);
-        const nextUnitCost = Number(line.unitCost ?? 0);
-        const lineCostPerUnit = nextUnitCost * (1 + nextYield / 100);
+        const consumption = Number(line.consumptionPerUnit ?? 0);
+        const cost = Number(line.unitCost ?? 0);
+        const lineCostPerUnit = this.calcLineCost(consumption, cost);
 
         await this.lineRepo.save(
           this.lineRepo.create({
@@ -68,8 +75,9 @@ export class BomsService {
             materialName: line.materialName ?? '',
             materialGroup: line.materialGroup ?? '',
             unit: line.unit ?? '',
-            yieldPct: nextYield,
-            unitCost: nextUnitCost,
+            consumptionPerUnit: consumption,
+            yieldPct: 3,
+            unitCost: cost,
             lineCostPerUnit,
           }),
         );
@@ -138,21 +146,19 @@ export class BomsService {
     const bom = await this.findOne(id);
     const previousStatus = bom.status;
 
-    // Workflow transitions
+    // Workflow transitions:
+    // Draft → Wait_RD (RD nhập định mức)
+    // → Wait_TP_Approve (TPKH review số lượng)
+    // → Wait_Price (KT nhập đơn giá)
+    // → Wait_SA_Approve (SA duyệt final)
     const validTransitions: Record<BomStatus, BomStatus[]> = {
-      [BomStatus.DRAFT]: [BomStatus.WAIT_RD],
-      [BomStatus.WAIT_RD]: [BomStatus.WAIT_PRICE, BomStatus.DRAFT],
-      [BomStatus.WAIT_PRICE]: [BomStatus.WAIT_TP_APPROVE, BomStatus.WAIT_RD],
-      [BomStatus.WAIT_TP_APPROVE]: [
-        BomStatus.WAIT_SA_APPROVE,
-        BomStatus.WAIT_PRICE,
-      ],
-      [BomStatus.WAIT_SA_APPROVE]: [
-        BomStatus.APPROVED,
-        BomStatus.WAIT_TP_APPROVE,
-      ],
-      [BomStatus.APPROVED]: [BomStatus.LOCKED],
-      [BomStatus.LOCKED]: [],
+      [BomStatus.DRAFT]:           [BomStatus.WAIT_RD],
+      [BomStatus.WAIT_RD]:         [BomStatus.WAIT_TP_APPROVE, BomStatus.DRAFT],
+      [BomStatus.WAIT_TP_APPROVE]: [BomStatus.WAIT_PRICE, BomStatus.WAIT_RD],
+      [BomStatus.WAIT_PRICE]:      [BomStatus.WAIT_SA_APPROVE, BomStatus.WAIT_TP_APPROVE],
+      [BomStatus.WAIT_SA_APPROVE]: [BomStatus.APPROVED, BomStatus.WAIT_PRICE],
+      [BomStatus.APPROVED]:        [BomStatus.LOCKED],
+      [BomStatus.LOCKED]:          [],
     };
 
     if (!validTransitions[bom.status].includes(status)) {
@@ -211,11 +217,15 @@ export class BomsService {
     const bom = await this.findOne(bomId);
     this.assertEditableBomForLineChange(bom);
 
+    const consumption = Number(dto.consumptionPerUnit ?? 0);
+    const cost = Number(dto.unitCost ?? 0);
     const line = this.lineRepo.create({
       ...dto,
       bomId,
-      lineCostPerUnit:
-        Number(dto.unitCost ?? 0) * (1 + Number(dto.yieldPct ?? 0) / 100),
+      consumptionPerUnit: consumption,
+      yieldPct: 3,
+      unitCost: cost,
+      lineCostPerUnit: this.calcLineCost(consumption, cost),
     });
     const saved = await this.lineRepo.save(line);
 
@@ -251,12 +261,12 @@ export class BomsService {
       ...dto,
       id: line.id,
       bomId: line.bomId,
+      yieldPct: 3,
     };
 
-    const nextYield = Number(patched.yieldPct ?? 0);
-    const nextUnitCost = Number(patched.unitCost ?? 0);
-
-    patched.lineCostPerUnit = nextUnitCost * (1 + nextYield / 100);
+    const consumption = Number(patched.consumptionPerUnit ?? 0);
+    const cost = Number(patched.unitCost ?? 0);
+    patched.lineCostPerUnit = this.calcLineCost(consumption, cost);
 
     const saved = await this.lineRepo.save(patched);
     await this.recomputeTotal(bomId);
@@ -319,41 +329,41 @@ export class BomsService {
     const lines = bom.bomLines || [];
 
     if (nextStatus === BomStatus.WAIT_RD) {
-      const isBasicComplete =
+      const basicDone =
         lines.length > 0 &&
         lines.every(
-          (line) =>
-            !!line.materialName?.trim() &&
-            !!line.materialGroup?.trim() &&
-            !!line.unit?.trim(),
+          (l) =>
+            !!l.materialName?.trim() &&
+            !!l.materialGroup?.trim() &&
+            !!l.unit?.trim(),
         );
-      if (!isBasicComplete) {
+      if (!basicDone) {
         throw new BadRequestException(
-          'Cannot move to Wait_RD: missing basic material info',
+          'Chưa nhập đủ tên, nhóm và ĐVT cho tất cả vật tư',
         );
       }
     }
 
-    if (nextStatus === BomStatus.WAIT_PRICE) {
-      const isRdComplete =
-        lines.length > 0 &&
-        lines.every((line) => line.yieldPct != null);
-      if (!isRdComplete) {
-        throw new BadRequestException(
-          'Cannot move to Wait_Price: missing yield data',
-        );
-      }
-    }
-
+    // TPKH review: R&D phải đã nhập consumptionPerUnit > 0
     if (nextStatus === BomStatus.WAIT_TP_APPROVE) {
-      const isPriceComplete =
+      const rdDone =
         lines.length > 0 &&
-        lines.every(
-          (line) => line.unitCost != null && Number(line.unitCost) > 0,
-        );
-      if (!isPriceComplete) {
+        lines.every((l) => Number(l.consumptionPerUnit) > 0);
+      if (!rdDone) {
         throw new BadRequestException(
-          'Cannot move to Wait_TP_Approve: missing unit cost data',
+          'R&D chưa nhập đủ Định mức tiêu hao cho tất cả vật tư',
+        );
+      }
+    }
+
+    // SA duyệt: KT phải đã nhập unitCost > 0
+    if (nextStatus === BomStatus.WAIT_SA_APPROVE) {
+      const ktDone =
+        lines.length > 0 &&
+        lines.every((l) => l.unitCost != null && Number(l.unitCost) > 0);
+      if (!ktDone) {
+        throw new BadRequestException(
+          'Kế toán chưa nhập đủ đơn giá cho tất cả vật tư',
         );
       }
     }
