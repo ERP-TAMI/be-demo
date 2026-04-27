@@ -7,10 +7,10 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { PurchaseOrder } from '../../purchase-orders/entities/purchase-order.entity.js';
-import { PoLine } from '../../po-lines/entities/po-line.entity.js';
-import { User } from '../../user/entities/user.entity.js';
-import { BomLine } from './bom-line.entity.js';
+import { PurchaseOrder } from '../../purchase-orders/entities/purchase-order.entity';
+import { PoLine } from '../../po-lines/entities/po-line.entity';
+import { User } from '../../user/entities/user.entity';
+import { BomLine } from './bom-line.entity';
 
 export enum BomStatus {
   DRAFT = 'Draft',

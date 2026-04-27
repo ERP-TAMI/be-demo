@@ -12,10 +12,10 @@ import {
   Request,
 } from '@nestjs/common';
 import { BomsService } from './boms.service.js';
-import { BomStatus } from './entities/bom.entity.js';
+import { BomStatus } from './entities/bom.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { Bom } from './entities/bom.entity.js';
-import { BomLine } from './entities/bom-line.entity.js';
+import { Bom } from './entities/bom.entity';
+import { BomLine } from './entities/bom-line.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('boms')

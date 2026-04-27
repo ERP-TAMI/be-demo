@@ -6,7 +6,7 @@ import {
   IsDateString,
   MaxLength,
 } from 'class-validator';
-import { PoStatus } from '../entities/purchase-order.entity.js';
+import { PoStatus } from '../entities/purchase-order.entity';
 
 export class CreatePurchaseOrderDto {
   @IsString()

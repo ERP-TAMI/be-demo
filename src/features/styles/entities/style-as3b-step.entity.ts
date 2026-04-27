@@ -7,7 +7,7 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Style } from './style.entity.js';
+import { Style } from './style.entity';
 
 @Entity('style_as3b_steps')
 export class StyleAs3bStep {

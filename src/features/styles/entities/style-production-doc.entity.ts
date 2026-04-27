@@ -8,7 +8,7 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { Style } from './style.entity.js';
+import { Style } from './style.entity';
 
 export enum ProductionDocStatus {
   DRAFT = 'Draft',
@@ -45,7 +45,7 @@ export class StyleProductionDoc {
   @Column({ type: 'text', nullable: true, name: 'section1_description' })
   section1Description: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true, name: 'section1_image_url' })
+  @Column({ type: 'text', nullable: true, name: 'section1_image_url' })
   section1ImageUrl: string;
 
   // Section 2: Phụ liệu

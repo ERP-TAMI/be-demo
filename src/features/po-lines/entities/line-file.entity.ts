@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { PoLine } from './po-line.entity.js';
+import { PoLine } from './po-line.entity';
 
 export enum LineFileLabel {
   BOM_PDF = 'BOM PDF',

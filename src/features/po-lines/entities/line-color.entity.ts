@@ -7,9 +7,9 @@ import {
   OneToOne,
   JoinColumn,
 } from 'typeorm';
-import { PoLine } from './po-line.entity.js';
-import { LineColorSize } from './line-color-size.entity.js';
-import { LineColorCard } from './line-color-card.entity.js';
+import { PoLine } from './po-line.entity';
+import { LineColorSize } from './line-color-size.entity';
+import { LineColorCard } from './line-color-card.entity';
 
 @Entity('line_colors')
 export class LineColor {

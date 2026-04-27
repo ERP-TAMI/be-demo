@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DraftBom, DraftBomStatus } from './entities/draft-bom.entity.js';
-import { DraftBomLine } from './entities/draft-bom-line.entity.js';
+import { DraftBom, DraftBomStatus } from './entities/draft-bom.entity';
+import { DraftBomLine } from './entities/draft-bom-line.entity';
 import {
   CreateDraftBomDto,
   UpdateDraftBomDto,

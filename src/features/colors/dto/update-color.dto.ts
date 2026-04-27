@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { ColorStatus } from '../entities/color.entity.js';
+import { ColorStatus } from '../entities/color.entity';
 
 export class UpdateColorDto {
   @IsString()

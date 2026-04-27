@@ -17,7 +17,7 @@ import { AdminService, UserListQuery } from './admin.service.js';
 import { CreateUserDto } from './dto/create-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
-import { UserRole, UserStatus } from '../user/entities/user.entity.js';
+import { UserRole, UserStatus } from '../user/entities/user.entity';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)

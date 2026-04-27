@@ -7,9 +7,9 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { DraftBomLine } from './draft-bom-line.entity.js';
-import { Style } from '../../styles/entities/style.entity.js';
-import { Color } from '../../colors/entities/color.entity.js';
+import { DraftBomLine } from './draft-bom-line.entity';
+import { Style } from '../../styles/entities/style.entity';
+import { Color } from '../../colors/entities/color.entity';
 
 export enum DraftBomStatus {
   DRAFT = 'Draft',

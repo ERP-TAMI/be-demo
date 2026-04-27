@@ -13,7 +13,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
 import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { VerifyOtpDto } from './dto/verify-otp.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
-import { User, UserStatus } from '../user/entities/user.entity.js';
+import { User, UserStatus } from '../user/entities/user.entity';
 import { MailService } from '../../mail/mail.service.js';
 
 export interface JwtPayload {

@@ -17,7 +17,7 @@ import { StyleAs3bService } from './style-as3b.service.js';
 import { CreateStyleDto } from './dto/create-style.dto.js';
 import { UpdateStyleDto } from './dto/update-style.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { StyleStatus } from './entities/style.entity.js';
+import { StyleStatus } from './entities/style.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('styles')
@@ -158,5 +158,19 @@ export class StylesController {
   @Get(':id/logs')
   getLogs(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.getLogs(id);
+  }
+
+  @Get(':id/sample')
+  getSample(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.getSampleForStyle(id);
+  }
+
+  @Post(':id/sample')
+  createOrReplaceSample(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: { description?: string; images?: string[]; dateTime?: string; internalNote?: string },
+    @Request() req: { user?: { email: string } },
+  ) {
+    return this.service.createOrReplaceSampleVersion(id, body, req.user?.email ?? 'system');
   }
 }

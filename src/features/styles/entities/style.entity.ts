@@ -6,18 +6,30 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Color } from '../../colors/entities/color.entity.js';
-import { Sample } from '../../samples/entities/sample.entity.js';
-import { DraftBom } from '../../draft-boms/entities/draft-bom.entity.js';
-import { StyleAs3bStep } from './style-as3b-step.entity.js';
-import { StyleProductionDoc } from './style-production-doc.entity.js';
+import { Color } from '../../colors/entities/color.entity';
+import { Sample } from '../../samples/entities/sample.entity';
+import { DraftBom } from '../../draft-boms/entities/draft-bom.entity';
+import { StyleAs3bStep } from './style-as3b-step.entity';
+import { StyleProductionDoc } from './style-production-doc.entity';
+
+/**
+ * Metadata for files assigned to a Style (stored as JSONB).
+ * Matches frontend expectations: { id, name, url, type, size, uploadedAt }
+ */
+export interface StyleFileMetadata {
+  id: string;
+  name: string;
+  url?: string;
+  type?: string;
+  size?: string;
+  label?: string;
+  uploadedAt?: Date;
+}
 
 export enum StyleStatus {
   DRAFT = 'Draft',
-  IN_REVIEW = 'In_Review',
   APPROVED = 'Approved',
   ACTIVE = 'Active',
-  ARCHIVED = 'Archived',
 }
 
 @Entity('styles')
@@ -73,4 +85,11 @@ export class Style {
 
   @OneToMany(() => StyleProductionDoc, (doc) => doc.style)
   productionDocs: StyleProductionDoc[];
+
+  /**
+   * Assigned documents metadata (stored as JSON array).
+   * Each entry: { id, name, url, type, size, uploadedAt }
+   */
+  @Column({ type: 'jsonb', nullable: true, default: [] })
+  files: StyleFileMetadata[];
 }

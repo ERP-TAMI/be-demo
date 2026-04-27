@@ -4,18 +4,20 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
-
-export enum MaterialGroup {
-  VAI_CHINH = 'Vải chính',
-  VAI_LOT = 'Vải lót',
-  PHU_LIEU = 'Phụ liệu',
-  NHAN_BAO_BI = 'Nhãn & Bao bì',
-}
+import { MaterialGroup } from './material-group.entity';
 
 export enum MaterialStatus {
   ACTIVE = 'Active',
   INACTIVE = 'Inactive',
+}
+
+export enum StockStatus {
+  OK = 'OK',
+  LOW = 'Low',
+  OUT = 'Out',
 }
 
 @Entity('materials')
@@ -29,12 +31,12 @@ export class Material {
   @Column({ type: 'varchar', length: 255, name: 'material_name' })
   materialName: string;
 
-  @Column({
-    type: 'enum',
-    enum: MaterialGroup,
-    name: 'material_group',
-  })
-  materialGroup: MaterialGroup;
+  @ManyToOne(() => MaterialGroup, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'material_group_id' })
+  materialGroupEntity: MaterialGroup;
+
+  @Column({ type: 'uuid', nullable: true, name: 'material_group_id' })
+  materialGroupId: string;
 
   @Column({ type: 'varchar', length: 50 })
   unit: string;
@@ -63,6 +65,24 @@ export class Material {
     default: MaterialStatus.ACTIVE,
   })
   status: MaterialStatus;
+
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 0,
+    name: 'current_stock',
+  })
+  currentStock: number;
+
+  @Column({
+    type: 'decimal',
+    precision: 15,
+    scale: 2,
+    default: 10,
+    name: 'low_stock_threshold',
+  })
+  lowStockThreshold: number;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;

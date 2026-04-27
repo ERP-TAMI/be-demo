@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { LineColor } from './line-color.entity.js';
+import { LineColor } from './line-color.entity';
 
 @Entity('line_color_sizes')
 export class LineColorSize {

@@ -15,7 +15,7 @@ import {
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto,
 } from './dto/purchase-order.dto.js';
-import { PoStatus } from './entities/purchase-order.entity.js';
+import { PoStatus } from './entities/purchase-order.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 
 @UseGuards(JwtAuthGuard)

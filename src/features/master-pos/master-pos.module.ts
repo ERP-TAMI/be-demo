@@ -2,10 +2,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MasterPosController } from './master-pos.controller.js';
 import { MasterPosService } from './master-pos.service.js';
-import { MasterPo } from './entities/master-po.entity.js';
-import { MasterPoLine } from './entities/master-po-line.entity.js';
-import { PoLine } from '../po-lines/entities/po-line.entity.js';
-import { Bom } from '../boms/entities/bom.entity.js';
+import { MasterPo } from './entities/master-po.entity';
+import { MasterPoLine } from './entities/master-po-line.entity';
+import { PoLine } from '../po-lines/entities/po-line.entity';
+import { Bom } from '../boms/entities/bom.entity';
 
 @Module({
   imports: [

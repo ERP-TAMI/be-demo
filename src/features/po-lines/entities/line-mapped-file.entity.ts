@@ -1,6 +1,6 @@
 import { Entity, PrimaryColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { PoLine } from './po-line.entity.js';
-import { PoFile } from '../../purchase-orders/entities/po-file.entity.js';
+import { PoLine } from './po-line.entity';
+import { PoFile } from '../../purchase-orders/entities/po-file.entity';
 
 @Entity('line_mapped_files')
 export class LineMappedFile {

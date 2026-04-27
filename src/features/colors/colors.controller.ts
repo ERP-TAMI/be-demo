@@ -15,7 +15,7 @@ import { ColorsService } from './colors.service.js';
 import { CreateColorDto } from './dto/create-color.dto.js';
 import { UpdateColorDto } from './dto/update-color.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { ColorStatus } from './entities/color.entity.js';
+import { ColorStatus } from './entities/color.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('colors')

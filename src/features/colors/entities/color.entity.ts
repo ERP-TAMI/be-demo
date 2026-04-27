@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Style } from '../../styles/entities/style.entity.js';
+import { Style } from '../../styles/entities/style.entity';
 
 export enum ColorStatus {
   DRAFT = 'Draft',

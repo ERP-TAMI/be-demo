@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { DocFolder } from './doc-folder.entity.js';
+import { DocFolder } from './doc-folder.entity';
 
 @Entity('doc_files')
 export class DocFile {

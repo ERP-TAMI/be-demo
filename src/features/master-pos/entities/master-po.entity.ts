@@ -5,7 +5,7 @@ import {
   CreateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { MasterPoLine } from './master-po-line.entity.js';
+import { MasterPoLine } from './master-po-line.entity';
 
 export enum MasterPoStatus {
   DRAFT = 'Draft',

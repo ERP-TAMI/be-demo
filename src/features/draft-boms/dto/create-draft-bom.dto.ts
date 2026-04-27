@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsArray } from 'class-validator';
-import { DraftBomStatus } from '../entities/draft-bom.entity.js';
+import { DraftBomStatus } from '../entities/draft-bom.entity';
 
 export class CreateDraftBomDto {
   @IsString()

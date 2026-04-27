@@ -6,8 +6,8 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { DraftBom } from './draft-bom.entity.js';
-import { Material } from '../../masters/entities/material.entity.js';
+import { DraftBom } from './draft-bom.entity';
+import { Material } from '../../masters/entities/material.entity';
 
 @Entity('draft_bom_lines')
 export class DraftBomLine {

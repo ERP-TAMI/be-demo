@@ -19,7 +19,7 @@ import {
   LinkMultiplePOLinesDto,
 } from './dto/create-master-po.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { MasterPoStatus } from './entities/master-po.entity.js';
+import { MasterPoStatus } from './entities/master-po.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('master-pos')

@@ -6,9 +6,9 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PurchaseOrder, PoStatus } from './entities/purchase-order.entity.js';
-import { PoFile, FileLabel } from './entities/po-file.entity.js';
-import { PoVersionLog, PoEventType } from './entities/po-version-log.entity.js';
+import { PurchaseOrder, PoStatus } from './entities/purchase-order.entity';
+import { PoFile, FileLabel } from './entities/po-file.entity';
+import { PoVersionLog, PoEventType } from './entities/po-version-log.entity';
 import {
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto,

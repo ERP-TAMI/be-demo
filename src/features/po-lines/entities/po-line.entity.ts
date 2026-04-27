@@ -7,12 +7,12 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { PurchaseOrder } from '../../purchase-orders/entities/purchase-order.entity.js';
-import { LineColor } from './line-color.entity.js';
-import { LineFile } from './line-file.entity.js';
-import { LineAs3bStep } from './line-as3b-step.entity.js';
-import { LineSample } from './line-sample.entity.js';
-import { LineMappedFile } from './line-mapped-file.entity.js';
+import { PurchaseOrder } from '../../purchase-orders/entities/purchase-order.entity';
+import { LineColor } from './line-color.entity';
+import { LineFile } from './line-file.entity';
+import { LineAs3bStep } from './line-as3b-step.entity';
+import { LineSample } from './line-sample.entity';
+import { LineMappedFile } from './line-mapped-file.entity';
 
 export enum LineCategory {
   SHIRT = 'Shirt',

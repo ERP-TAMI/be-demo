@@ -3,12 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
 import axios from 'axios';
-import { ProductionDoc } from './entities/production-doc.entity.js';
-import { ProductionDocSizeRow } from './entities/production-doc-size-row.entity.js';
-import { ProductionDocSection } from './entities/production-doc-section.entity.js';
+import { ProductionDoc } from './entities/production-doc.entity';
+import { ProductionDocSizeRow } from './entities/production-doc-size-row.entity';
+import { ProductionDocSection } from './entities/production-doc-section.entity';
 import { SaveProductionDocDto } from './dto/save-production-doc.dto.js';
-import { PoLine } from '../po-lines/entities/po-line.entity.js';
-import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity.js';
+import { PoLine } from '../po-lines/entities/po-line.entity';
+import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
 
 @Injectable()
 export class ProductionDocsService {

@@ -6,8 +6,8 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { PurchaseOrder } from './purchase-order.entity.js';
-import { User } from '../../user/entities/user.entity.js';
+import { PurchaseOrder } from './purchase-order.entity';
+import { User } from '../../user/entities/user.entity';
 
 export enum FileLabel {
   PO_PDF = 'PO PDF',

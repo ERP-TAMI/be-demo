@@ -16,7 +16,7 @@ import {
   UpdateSampleDto,
 } from './dto/create-sample.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { SampleType, SampleStatus } from './entities/sample.entity.js';
+import { SampleType, SampleStatus } from './entities/sample.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('samples')

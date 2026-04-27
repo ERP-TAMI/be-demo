@@ -7,10 +7,10 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { PoLine } from '../../po-lines/entities/po-line.entity.js';
-import { Workshop } from '../../masters/entities/workshop.entity.js';
-import { User } from '../../user/entities/user.entity.js';
-import { DailyPlan } from './daily-plan.entity.js';
+import { PoLine } from '../../po-lines/entities/po-line.entity';
+import { Workshop } from '../../masters/entities/workshop.entity';
+import { User } from '../../user/entities/user.entity';
+import { DailyPlan } from './daily-plan.entity';
 
 @Entity('production_plans')
 export class ProductionPlan {

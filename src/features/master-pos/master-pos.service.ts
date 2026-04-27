@@ -6,10 +6,10 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { MasterPo, MasterPoStatus } from './entities/master-po.entity.js';
-import { MasterPoLine } from './entities/master-po-line.entity.js';
-import { Bom } from '../boms/entities/bom.entity.js';
-import { PoLine } from '../po-lines/entities/po-line.entity.js';
+import { MasterPo, MasterPoStatus } from './entities/master-po.entity';
+import { MasterPoLine } from './entities/master-po-line.entity';
+import { Bom } from '../boms/entities/bom.entity';
+import { PoLine } from '../po-lines/entities/po-line.entity';
 import {
   CreateMasterPoDto,
   UpdateMasterPoDto,
