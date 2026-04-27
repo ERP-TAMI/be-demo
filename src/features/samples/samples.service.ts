@@ -9,7 +9,7 @@ import {
   Sample,
   SampleStatus,
   SampleType,
-} from './entities/sample.entity.js';
+} from './entities/sample.entity';
 import { CreateSampleDto, UpdateSampleDto } from './dto/create-sample.dto.js';
 
 @Injectable()
@@ -55,6 +55,10 @@ export class SamplesService {
       .getMany();
   }
 
+  async findByStyleId(styleId: string): Promise<Sample | null> {
+    return this.sampleRepo.findOne({ where: { styleId } });
+  }
+
   async findOne(id: string): Promise<Sample> {
     const sample = await this.sampleRepo.findOne({
       where: { id },
@@ -79,11 +83,20 @@ export class SamplesService {
       throw new ConflictException(`Sample code "${dto.sampleCode}" already exists`);
     }
 
-    const sample = this.sampleRepo.create({
-      ...dto,
-      status: SampleStatus.DRAFT,
-      createdBy: actor ?? 'system',
-    });
+    const sample = new Sample();
+    sample.sampleCode = dto.sampleCode;
+    sample.sampleType = dto.sampleType || SampleType.TECHPACK;
+    sample.styleId = dto.styleId || null;
+    sample.colorId = dto.colorId || null;
+    sample.description = dto.description || null;
+    sample.dateTime = dto.dateTime ? new Date(dto.dateTime) : null;
+    sample.internalNote = dto.internalNote || null;
+    sample.files = dto.files || null;
+    sample.images = dto.images || null;
+    sample.status = SampleStatus.DRAFT;
+    sample.createdBy = actor ?? 'system';
+    sample.version = 1;
+    sample.versions = null;
     return this.sampleRepo.save(sample);
   }
 

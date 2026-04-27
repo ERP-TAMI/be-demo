@@ -7,15 +7,15 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { LineColor } from './entities/line-color.entity.js';
-import { LineColorCard } from './entities/line-color-card.entity.js';
-import { LineStatus, PoLine } from './entities/po-line.entity.js';
+import { LineColor } from './entities/line-color.entity';
+import { LineColorCard } from './entities/line-color-card.entity';
+import { LineStatus, PoLine } from './entities/po-line.entity';
 import {
   PoStatus,
   PurchaseOrder,
-} from '../purchase-orders/entities/purchase-order.entity.js';
+} from '../purchase-orders/entities/purchase-order.entity';
 import { UploadsService } from '../uploads/uploads.service.js';
-import { UserRole } from '../user/entities/user.entity.js';
+import { UserRole } from '../user/entities/user.entity';
 
 const UPLOAD_ROLES: UserRole[] = [UserRole.TPKH, UserRole.NVKH, UserRole.RD];
 const COLOR_CARD_FOLDER = 'color-cards';

@@ -7,7 +7,7 @@ import {
   Matches,
   MinLength,
 } from 'class-validator';
-import { UserRole } from '../../user/entities/user.entity.js';
+import { UserRole } from '../../user/entities/user.entity';
 
 // IT Admin chỉ được gán các role này (không gán SA)
 export const ASSIGNABLE_ROLES_BY_IT = [

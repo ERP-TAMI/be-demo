@@ -7,7 +7,7 @@ import {
   Min,
   MaxLength,
 } from 'class-validator';
-import { StageStatus } from '../entities/stage.entity.js';
+import { StageStatus } from '../entities/stage.entity';
 
 export class CreateStageDto {
   @IsString()

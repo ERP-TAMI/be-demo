@@ -18,7 +18,7 @@ import {
   DraftBomLineDto,
 } from './dto/create-draft-bom.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { DraftBomStatus } from './entities/draft-bom.entity.js';
+import { DraftBomStatus } from './entities/draft-bom.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('draft-boms')

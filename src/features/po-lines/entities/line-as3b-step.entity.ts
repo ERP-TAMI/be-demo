@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { PoLine } from './po-line.entity.js';
+import { PoLine } from './po-line.entity';
 
 @Entity('line_as3b_steps')
 export class LineAs3bStep {

@@ -17,11 +17,11 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PoLinesService } from './po-lines.service.js';
-import { LineStatus, PoLine } from './entities/po-line.entity.js';
+import { LineStatus, PoLine } from './entities/po-line.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { LineAs3bStep } from './entities/line-as3b-step.entity.js';
-import { LineSample } from './entities/line-sample.entity.js';
-import { UserRole } from '../user/entities/user.entity.js';
+import { LineAs3bStep } from './entities/line-as3b-step.entity';
+import { LineSample } from './entities/line-sample.entity';
+import { UserRole } from '../user/entities/user.entity';
 import { ColorCardService } from './color-card.service.js';
 
 const MAX_COLOR_CARD_SIZE = 20 * 1024 * 1024; // 20 MB

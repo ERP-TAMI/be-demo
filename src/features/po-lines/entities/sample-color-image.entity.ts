@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { LineSample } from './line-sample.entity.js';
+import { LineSample } from './line-sample.entity';
 
 @Entity('sample_color_images')
 export class SampleColorImage {

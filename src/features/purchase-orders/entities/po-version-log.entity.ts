@@ -6,7 +6,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { PurchaseOrder } from './purchase-order.entity.js';
+import { PurchaseOrder } from './purchase-order.entity';
 
 export enum PoEventType {
   PO_CREATED = 'PO_CREATED',

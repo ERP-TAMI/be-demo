@@ -5,9 +5,11 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DeepPartial, QueryFailedError } from 'typeorm';
-import { Style, StyleStatus } from './entities/style.entity.js';
-import { StyleAs3bStep } from './entities/style-as3b-step.entity.js';
-import { StyleVersionLog } from './entities/style-version-log.entity.js';
+import { Style, StyleStatus, StyleFileMetadata } from './entities/style.entity';
+import { StyleAs3bStep } from './entities/style-as3b-step.entity';
+import { StyleVersionLog } from './entities/style-version-log.entity';
+import { Sample, SampleType, SampleStatus } from '../samples/entities/sample.entity';
+import { DocFile } from '../doc-folders/entities/doc-file.entity';
 import { CreateStyleDto } from './dto/create-style.dto.js';
 import { UpdateStyleDto } from './dto/update-style.dto.js';
 
@@ -20,6 +22,10 @@ export class StylesService {
     private readonly as3bRepo: Repository<StyleAs3bStep>,
     @InjectRepository(StyleVersionLog)
     private readonly logRepo: Repository<StyleVersionLog>,
+    @InjectRepository(Sample)
+    private readonly sampleRepo: Repository<Sample>,
+    @InjectRepository(DocFile)
+    private readonly docFileRepo: Repository<DocFile>,
   ) {}
 
   async findAll(filters?: {
@@ -110,9 +116,9 @@ export class StylesService {
 
   async archive(id: string): Promise<Style> {
     const style = await this.findOne(id);
-    style.status = StyleStatus.ARCHIVED;
+    style.status = StyleStatus.DRAFT;
     const saved = await this.styleRepo.save(style);
-    await this.logActionSafe(id, 'STYLE_ARCHIVED', 'Archived style', 'system');
+    await this.logActionSafe(id, 'STYLE_RESET', 'Reset style to draft', 'system');
     return saved;
   }
 
@@ -209,7 +215,39 @@ export class StylesService {
 
   async assignDocuments(styleId: string, documentIds: string[]): Promise<Style> {
     const style = await this.findOne(styleId);
-    void documentIds;
+
+    if (!documentIds || documentIds.length === 0) {
+      return style;
+    }
+
+    // Fetch the doc files by their IDs
+    const docFiles = await this.docFileRepo.findByIds(documentIds);
+
+    // Extract file metadata for storage in the Style's files column
+    const fileMetadata: StyleFileMetadata[] = docFiles.map((f) => ({
+      id: f.id,
+      name: f.name,
+      type: f.type,
+      size: f.size,
+      url: f.url,
+      label: 'Tài liệu khác',
+      uploadedAt: f.uploadedAt,
+    }));
+
+    // Append to existing files (avoid duplicates by id)
+    const existingFileIds = new Set((style.files || []).map((f) => f.id));
+    const newFiles = fileMetadata.filter((f) => !existingFileIds.has(f.id as string));
+
+    style.files = [...(style.files || []), ...newFiles];
+    await this.styleRepo.save(style);
+
+    await this.logActionSafe(
+      styleId,
+      'STYLE_DOCUMENTS_ASSIGNED',
+      `Assigned ${docFiles.length} document(s) to style`,
+      'system',
+    );
+
     return style;
   }
 
@@ -341,5 +379,75 @@ export class StylesService {
     const message = driverError?.message ?? error.message ?? '';
 
     return driverError?.code === '42P01' && tableNames.some((tableName) => message.includes(tableName));
+  }
+
+  async getSampleForStyle(styleId: string): Promise<Sample | null> {
+    const style = await this.findOne(styleId);
+    const samples = await this.sampleRepo.find({ where: { styleId: style.id } });
+    if (!samples.length) return null;
+    return samples[0];
+  }
+
+  async createOrReplaceSampleVersion(
+    styleId: string,
+    body: { description?: string; images?: string[]; dateTime?: string; internalNote?: string },
+    actor?: string,
+  ): Promise<Sample> {
+    const style = await this.findOne(styleId);
+    const existingSamples = await this.sampleRepo.find({ where: { styleId: style.id } });
+    const existing = existingSamples[0] ?? null;
+
+    const sampleCode = existing?.sampleCode ?? `SMP-${style.styleCode}-${Date.now()}`;
+
+    if (existing) {
+      const newVersion = (existing.version || 1) + 1;
+      const snapshot = {
+        version: existing.version || 1,
+        images: existing.images || [],
+        description: existing.description || null,
+        dateTime: existing.dateTime ? existing.dateTime.toISOString() : null,
+        createdAt: existing.createdAt.toISOString(),
+        createdBy: existing.createdBy || 'system',
+      };
+      existing.description = body.description || null;
+      existing.dateTime = body.dateTime ? new Date(body.dateTime) : null;
+      existing.internalNote = body.internalNote || null;
+      existing.images = body.images || null;
+      existing.version = newVersion;
+      existing.versions = [...(existing.versions || []), snapshot];
+      existing.createdBy = actor ?? 'system';
+      const saved = await this.sampleRepo.save(existing);
+
+      await this.logActionSafe(
+        styleId,
+        'SAMPLE_VERSION_CREATED',
+        `Tạo version ${newVersion} của mẫu (thay thế v${existing.version || 1})`,
+        actor ?? 'system',
+      );
+      return saved;
+    }
+
+    const sample = this.sampleRepo.create({
+      sampleCode,
+      sampleType: SampleType.TECHPACK,
+      styleId: style.id,
+      description: body.description || null,
+      dateTime: body.dateTime ? new Date(body.dateTime) : null,
+      internalNote: body.internalNote || null,
+      images: body.images || null,
+      status: SampleStatus.DRAFT,
+      version: 1,
+      versions: null,
+      createdBy: actor ?? 'system',
+    });
+    const saved = await this.sampleRepo.save(sample);
+
+    await this.logActionSafe(
+      styleId,
+      'SAMPLE_CREATED',
+      `Tạo mẫu đầu tiên (version 1)`,
+      actor ?? 'system',
+    );
+    return saved;
   }
 }

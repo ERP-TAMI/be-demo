@@ -6,24 +6,24 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { PoLine, LineStatus } from './entities/po-line.entity.js';
-import { LineColor } from './entities/line-color.entity.js';
-import { LineColorSize } from './entities/line-color-size.entity.js';
+import { PoLine, LineStatus } from './entities/po-line.entity';
+import { LineColor } from './entities/line-color.entity';
+import { LineColorSize } from './entities/line-color-size.entity';
 
-import { LineAs3bStep } from './entities/line-as3b-step.entity.js';
-import { LineSample } from './entities/line-sample.entity.js';
-import { SampleColorImage } from './entities/sample-color-image.entity.js';
-import { LineMappedFile } from './entities/line-mapped-file.entity.js';
-import { LineFile, LineFileLabel } from './entities/line-file.entity.js';
+import { LineAs3bStep } from './entities/line-as3b-step.entity';
+import { LineSample } from './entities/line-sample.entity';
+import { SampleColorImage } from './entities/sample-color-image.entity';
+import { LineMappedFile } from './entities/line-mapped-file.entity';
+import { LineFile, LineFileLabel } from './entities/line-file.entity';
 import {
   PoVersionLog,
   PoEventType,
-} from '../purchase-orders/entities/po-version-log.entity.js';
+} from '../purchase-orders/entities/po-version-log.entity';
 import {
   PurchaseOrder,
   PoStatus,
-} from '../purchase-orders/entities/purchase-order.entity.js';
-import { UserRole } from '../user/entities/user.entity.js';
+} from '../purchase-orders/entities/purchase-order.entity';
+import { UserRole } from '../user/entities/user.entity';
 
 @Injectable()
 export class PoLinesService {

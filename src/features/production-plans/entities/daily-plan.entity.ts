@@ -6,7 +6,7 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { ProductionPlan } from './production-plan.entity.js';
+import { ProductionPlan } from './production-plan.entity';
 
 @Entity('daily_plans')
 @Unique(['planId', 'day'])

@@ -8,9 +8,9 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { PoLine } from '../../po-lines/entities/po-line.entity.js';
-import { ProductionDocSizeRow } from './production-doc-size-row.entity.js';
-import { ProductionDocSection } from './production-doc-section.entity.js';
+import { PoLine } from '../../po-lines/entities/po-line.entity';
+import { ProductionDocSizeRow } from './production-doc-size-row.entity';
+import { ProductionDocSection } from './production-doc-section.entity';
 
 @Entity('production_docs')
 export class ProductionDoc {

@@ -6,8 +6,8 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Style } from '../../styles/entities/style.entity.js';
-import { Color } from '../../colors/entities/color.entity.js';
+import { Style } from '../../styles/entities/style.entity';
+import { Color } from '../../colors/entities/color.entity';
 
 export enum SampleType {
   TECHPACK = 'TechPack',
@@ -44,36 +44,56 @@ export class Sample {
   style: Style;
 
   @Column({ type: 'uuid', nullable: true, name: 'style_id' })
-  styleId: string;
+  styleId: string | null;
 
   @ManyToOne(() => Color, { nullable: true })
   @JoinColumn({ name: 'color_id' })
   color: Color;
 
   @Column({ type: 'uuid', nullable: true, name: 'color_id' })
-  colorId: string;
+  colorId: string | null;
 
   @Column({ type: 'text', nullable: true })
-  description: string;
+  description: string | null;
 
   @Column({ type: 'text', nullable: true, name: 'analysis_result' })
-  analysisResult: string;
+  analysisResult: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  files: { name: string; url: string; size: number }[];
+  files: { name: string; url: string; size: number }[] | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  images: string[];
+  images: string[] | null;
 
   @Column({
     type: 'enum',
     enum: SampleStatus,
     default: SampleStatus.DRAFT,
+    nullable: true,
   })
   status: SampleStatus;
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'created_by' })
-  createdBy: string;
+  createdBy: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true, name: 'date_time' })
+  dateTime: Date | null;
+
+  @Column({ type: 'text', nullable: true, name: 'internal_note' })
+  internalNote: string | null;
+
+  @Column({ type: 'int', nullable: true, default: 1 })
+  version: number | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  versions: {
+    version: number;
+    images: string[];
+    description: string | null;
+    dateTime: string | null;
+    createdAt: string;
+    createdBy: string | null;
+  }[] | null;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;

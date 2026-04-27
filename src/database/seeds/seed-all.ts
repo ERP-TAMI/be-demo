@@ -16,11 +16,8 @@ import {
   UserRole,
   UserStatus,
 } from '../../features/user/entities/user.entity';
-import {
-  Material,
-  MaterialGroup,
-  MaterialStatus,
-} from '../../features/masters/entities/material.entity';
+import { Material, MaterialStatus } from '../../features/masters/entities/material.entity';
+import { MaterialGroup } from '../../features/masters/entities/material-group.entity';
 import {
   Stage,
   StageStatus,
@@ -137,15 +134,34 @@ async function seed() {
   }
   console.log(`  → ${Object.keys(savedUsers).length} users seeded`);
 
+  // ─── Material Groups ─────────────────────────────────────────────────────────
+  console.log('🌱 Seeding material groups...');
+  const mgRepo = AppDataSource.getRepository(MaterialGroup);
+  const groupNames = [
+    'FUSIBLE', 'TAPE', 'MAIN LABEL', 'SIZE LABEL (SIZECOO)', 'CARE LABEL',
+    'HANGTAG', 'JOKER TAG', 'SWIFTACK', 'POLY BAG', 'HANGER', 'CARTON',
+    'ĐỆM VAI', 'DÂY KÉO', 'DÂY KÉO CUỘN', 'PULL ZIPPER', 'NÚT (BUTTON)',
+  ];
+  const groupMap: Record<string, MaterialGroup> = {};
+  for (let i = 0; i < groupNames.length; i++) {
+    let group = await mgRepo.findOne({ where: { name: groupNames[i] } });
+    if (!group) {
+      group = mgRepo.create({ name: groupNames[i], displayOrder: i + 1 });
+      group = await mgRepo.save(group);
+    }
+    groupMap[groupNames[i]] = group;
+  }
+  console.log(`  → ${Object.keys(groupMap).length} material groups seeded`);
+
   // ─── Materials ───────────────────────────────────────────────────────────────
   console.log('🌱 Seeding materials...');
   const matRepo = AppDataSource.getRepository(Material);
   const materialsData = [
-    // Vải chính
+    // FUSIBLE
     {
       materialCode: 'VT-001',
       materialName: 'Vải Cotton 100% trắng',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 15,
       lastUnitCost: 85000,
@@ -153,7 +169,7 @@ async function seed() {
     {
       materialCode: 'VT-002',
       materialName: 'Vải Polyester blend xám',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 12,
       lastUnitCost: 65000,
@@ -161,7 +177,7 @@ async function seed() {
     {
       materialCode: 'VT-003',
       materialName: 'Vải Pique cotton 220gsm',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 10,
       lastUnitCost: 95000,
@@ -169,7 +185,7 @@ async function seed() {
     {
       materialCode: 'VT-004',
       materialName: 'Vải Nylon dri-fit 150gsm',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 8,
       lastUnitCost: 110000,
@@ -177,7 +193,7 @@ async function seed() {
     {
       materialCode: 'VT-005',
       materialName: 'Vải Oxford cotton 120gsm',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 12,
       lastUnitCost: 78000,
@@ -185,7 +201,7 @@ async function seed() {
     {
       materialCode: 'VT-006',
       materialName: 'Vải Denim 12oz twill',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 15,
       lastUnitCost: 145000,
@@ -193,7 +209,7 @@ async function seed() {
     {
       materialCode: 'VT-007',
       materialName: 'Vải Merino wool 100%',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 10,
       lastUnitCost: 320000,
@@ -201,7 +217,7 @@ async function seed() {
     {
       materialCode: 'VT-008',
       materialName: 'Vải Viscose 95% Elastane 5%',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 8,
       lastUnitCost: 125000,
@@ -209,7 +225,7 @@ async function seed() {
     {
       materialCode: 'VT-009',
       materialName: 'Vải Nylon 4-way stretch',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 10,
       lastUnitCost: 135000,
@@ -217,16 +233,16 @@ async function seed() {
     {
       materialCode: 'VT-010',
       materialName: 'Vải Cotton fleece 380gsm',
-      materialGroup: MaterialGroup.VAI_CHINH,
+      materialGroupId: groupMap['FUSIBLE'].id,
       unit: 'Mét',
       defaultYieldPct: 12,
       lastUnitCost: 185000,
     },
-    // Vải lót
+    // TAPE
     {
       materialCode: 'VL-001',
       materialName: 'Vải lót Polyester trắng',
-      materialGroup: MaterialGroup.VAI_LOT,
+      materialGroupId: groupMap['TAPE'].id,
       unit: 'Mét',
       defaultYieldPct: 10,
       lastUnitCost: 35000,
@@ -234,7 +250,7 @@ async function seed() {
     {
       materialCode: 'VL-002',
       materialName: 'Vải lót satin đen',
-      materialGroup: MaterialGroup.VAI_LOT,
+      materialGroupId: groupMap['TAPE'].id,
       unit: 'Mét',
       defaultYieldPct: 10,
       lastUnitCost: 45000,
@@ -242,16 +258,16 @@ async function seed() {
     {
       materialCode: 'VL-003',
       materialName: 'Lưới lót thoáng khí',
-      materialGroup: MaterialGroup.VAI_LOT,
+      materialGroupId: groupMap['TAPE'].id,
       unit: 'Mét',
       defaultYieldPct: 12,
       lastUnitCost: 28000,
     },
-    // Phụ liệu
+    // MAIN LABEL
     {
       materialCode: 'PL-001',
       materialName: 'Chỉ may Coats 40s/2',
-      materialGroup: MaterialGroup.PHU_LIEU,
+      materialGroupId: groupMap['MAIN LABEL'].id,
       unit: 'Cuộn',
       defaultYieldPct: 5,
       lastUnitCost: 18000,
@@ -259,56 +275,16 @@ async function seed() {
     {
       materialCode: 'PL-002',
       materialName: 'Nút nhựa 4 lỗ - 15mm',
-      materialGroup: MaterialGroup.PHU_LIEU,
+      materialGroupId: groupMap['MAIN LABEL'].id,
       unit: 'Cái',
       defaultYieldPct: 2,
       lastUnitCost: 800,
     },
-    {
-      materialCode: 'PL-003',
-      materialName: 'Khóa kéo YKK 20cm',
-      materialGroup: MaterialGroup.PHU_LIEU,
-      unit: 'Cái',
-      defaultYieldPct: 3,
-      lastUnitCost: 5500,
-    },
-    {
-      materialCode: 'PL-004',
-      materialName: 'Mex 60gsm không dệt',
-      materialGroup: MaterialGroup.PHU_LIEU,
-      unit: 'Mét',
-      defaultYieldPct: 5,
-      lastUnitCost: 15000,
-    },
-    {
-      materialCode: 'PL-005',
-      materialName: 'Thun cổ dệt 2.5cm',
-      materialGroup: MaterialGroup.PHU_LIEU,
-      unit: 'Mét',
-      defaultYieldPct: 8,
-      lastUnitCost: 12000,
-    },
-    {
-      materialCode: 'PL-006',
-      materialName: 'Dây kéo bông 380g',
-      materialGroup: MaterialGroup.PHU_LIEU,
-      unit: 'Kg',
-      defaultYieldPct: 5,
-      lastUnitCost: 85000,
-    },
-    {
-      materialCode: 'PL-007',
-      materialName: 'Móc khóa kim loại 3cm',
-      materialGroup: MaterialGroup.PHU_LIEU,
-      unit: 'Cái',
-      defaultYieldPct: 2,
-      lastUnitCost: 3500,
-    },
-    // Nhãn & Bao bì
+    // SIZE LABEL
     {
       materialCode: 'NB-001',
       materialName: 'Nhãn woven thương hiệu',
-      materialGroup: MaterialGroup.NHAN_BAO_BI,
+      materialGroupId: groupMap['SIZE LABEL (SIZECOO)'].id,
       unit: 'Cái',
       defaultYieldPct: 2,
       lastUnitCost: 2500,
@@ -316,15 +292,16 @@ async function seed() {
     {
       materialCode: 'NB-002',
       materialName: 'Nhãn care label 4-ngôn ngữ',
-      materialGroup: MaterialGroup.NHAN_BAO_BI,
+      materialGroupId: groupMap['SIZE LABEL (SIZECOO)'].id,
       unit: 'Cái',
       defaultYieldPct: 2,
       lastUnitCost: 1200,
     },
+    // POLY BAG
     {
       materialCode: 'NB-003',
       materialName: 'Túi PE zip lock 30x40cm',
-      materialGroup: MaterialGroup.NHAN_BAO_BI,
+      materialGroupId: groupMap['POLY BAG'].id,
       unit: 'Cái',
       defaultYieldPct: 3,
       lastUnitCost: 3800,
@@ -1727,7 +1704,7 @@ async function seed() {
           bomId: bom.id,
           masterMaterialId: mat?.id,
           materialName: mat?.materialName ?? line.materialCode,
-          materialGroup: mat?.materialGroup ?? 'Phụ liệu',
+          materialGroup: (mat as any)?.materialGroupEntity?.name ?? 'FUSIBLE',
           unit: mat?.unit ?? 'Cái',
           yieldPct: line.yieldPct,
           unitCost: line.unitCost,

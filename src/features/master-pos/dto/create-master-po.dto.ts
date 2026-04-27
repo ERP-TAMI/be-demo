@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsNumber, IsDateString } from 'class-validator';
-import { MasterPoStatus } from '../entities/master-po.entity.js';
+import { MasterPoStatus } from '../entities/master-po.entity';
 
 export class CreateMasterPoDto {
   @IsString()

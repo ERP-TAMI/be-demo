@@ -5,12 +5,12 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Bom, BomStatus } from './entities/bom.entity.js';
-import { BomLine } from './entities/bom-line.entity.js';
+import { Bom, BomStatus } from './entities/bom.entity';
+import { BomLine } from './entities/bom-line.entity';
 import {
   PoEventType,
   PoVersionLog,
-} from '../purchase-orders/entities/po-version-log.entity.js';
+} from '../purchase-orders/entities/po-version-log.entity';
 
 @Injectable()
 export class BomsService {

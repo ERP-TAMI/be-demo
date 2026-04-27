@@ -7,9 +7,9 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { User } from '../../user/entities/user.entity.js';
-import { PoLine } from '../../po-lines/entities/po-line.entity.js';
-import { PoFile } from './po-file.entity.js';
+import { User } from '../../user/entities/user.entity';
+import { PoLine } from '../../po-lines/entities/po-line.entity';
+import { PoFile } from './po-file.entity';
 
 export enum PoStatus {
   DRAFT = 'Draft',

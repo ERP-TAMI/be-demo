@@ -7,7 +7,7 @@ import {
   Min,
   MaxLength,
 } from 'class-validator';
-import { WorkshopStatus } from '../entities/workshop.entity.js';
+import { WorkshopStatus } from '../entities/workshop.entity';
 
 export class CreateWorkshopDto {
   @IsString()

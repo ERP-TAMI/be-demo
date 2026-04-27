@@ -7,8 +7,8 @@ import {
   OneToMany,
   JoinColumn,
 } from 'typeorm';
-import { PoLine } from './po-line.entity.js';
-import { SampleColorImage } from './sample-color-image.entity.js';
+import { PoLine } from './po-line.entity';
+import { SampleColorImage } from './sample-color-image.entity';
 
 export enum SampleStatus {
   DANG_LAM = 'Đang làm',

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Color, ColorStatus } from './entities/color.entity.js';
+import { Color, ColorStatus } from './entities/color.entity';
 import { CreateColorDto } from './dto/create-color.dto.js';
 import { UpdateColorDto } from './dto/update-color.dto.js';
 

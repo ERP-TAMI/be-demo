@@ -2,8 +2,8 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DocFoldersController } from './doc-folders.controller.js';
 import { DocFoldersService } from './doc-folders.service.js';
-import { DocFolder } from './entities/doc-folder.entity.js';
-import { DocFile } from './entities/doc-file.entity.js';
+import { DocFolder } from './entities/doc-folder.entity';
+import { DocFile } from './entities/doc-file.entity';
 import { UploadsModule } from '../uploads/uploads.module.js';
 
 @Module({

@@ -19,14 +19,15 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "migration:generate": "npm run build && node ./node_modules/typeorm/cli.js migration:generate -d dist/src/database/data-source.js",
-    "migration:run": "npm run build && node ./node_modules/typeorm/cli.js migration:run -d dist/src/database/data-source.js",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts",
     "migration:revert": "npm run build && node ./node_modules/typeorm/cli.js migration:revert -d dist/src/database/data-source.js",
     "migration:show": "npm run build && node ./node_modules/typeorm/cli.js migration:show -d dist/src/database/data-source.js",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d",
-    "seed": "npm run build && node dist/src/database/seeds/seed-users.js",
-    "seed:all": "npm run build && node dist/src/database/seeds/seed-all.js"
+    "seed": "npm run build && node dist/database/seeds/seed-users.js",
+    "seed:all": "npm run build && node dist/database/seeds/seed-all.js",
+    "seed:stages": "npm run build && node dist/database/seeds/seed-stages.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
@@ -81,7 +82,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.7.3",
+    "typescript": "^5.9.3",
     "typescript-eslint": "^8.20.0"
   },
   "jest": {

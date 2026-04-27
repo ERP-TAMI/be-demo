@@ -7,7 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
-import { User, UserRole, UserStatus } from '../user/entities/user.entity.js';
+import { User, UserRole, UserStatus } from '../user/entities/user.entity';
 import { MailService } from '../../mail/mail.service.js';
 import {
   CreateUserDto,

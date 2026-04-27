@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { ProductionDoc } from './production-doc.entity.js';
+import { ProductionDoc } from './production-doc.entity';
 
 @Entity('production_doc_sections')
 export class ProductionDocSection {

@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { DocFile } from './doc-file.entity.js';
+import { DocFile } from './doc-file.entity';
 
 @Entity('doc_folders')
 export class DocFolder {

@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum, IsArray } from 'class-validator';
-import { SampleType, SampleStatus } from '../entities/sample.entity.js';
+import { SampleType, SampleStatus } from '../entities/sample.entity';
 
 export class CreateSampleDto {
   @IsString()
@@ -20,6 +20,14 @@ export class CreateSampleDto {
   @IsString()
   @IsOptional()
   description?: string;
+
+  @IsString()
+  @IsOptional()
+  dateTime?: string;
+
+  @IsString()
+  @IsOptional()
+  internalNote?: string;
 
   @IsArray()
   @IsOptional()
@@ -50,6 +58,14 @@ export class UpdateSampleDto {
   @IsString()
   @IsOptional()
   analysisResult?: string;
+
+  @IsString()
+  @IsOptional()
+  dateTime?: string;
+
+  @IsString()
+  @IsOptional()
+  internalNote?: string;
 
   @IsArray()
   @IsOptional()

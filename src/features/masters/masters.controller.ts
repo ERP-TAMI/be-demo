@@ -10,10 +10,12 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { MastersService } from './masters.service.js';
-import { CreateMaterialDto, UpdateMaterialDto } from './dto/material.dto.js';
+import { CreateMaterialDto, UpdateMaterialDto, AdjustStockDto } from './dto/material.dto.js';
+import { CreateMaterialSizeDto, UpdateMaterialSizeDto, BulkCreateMaterialSizeDto } from './dto/material-size.dto.js';
 import { CreateStageDto, UpdateStageDto } from './dto/stage.dto.js';
 import { CreateWorkshopDto, UpdateWorkshopDto } from './dto/workshop.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 
 @UseGuards(JwtAuthGuard)
 @Controller('masters')
@@ -45,9 +47,58 @@ export class MastersController {
     return this.mastersService.updateMaterial(id, dto);
   }
 
+  @Patch('materials/:id/stock')
+  adjustStock(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AdjustStockDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.mastersService.adjustStock(id, dto, userId);
+  }
+
+  @Get('materials/low-stock')
+  findLowStockMaterials() {
+    return this.mastersService.findLowStockMaterials();
+  }
+
+  @Get('materials/:id/movements')
+  getStockMovements(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mastersService.getStockMovements(id);
+  }
+
   @Delete('materials/:id')
   removeMaterial(@Param('id', ParseUUIDPipe) id: string) {
     return this.mastersService.removeMaterial(id);
+  }
+
+  // ─── Material Groups ─────────────────────────────────────────────────────────
+
+  @Get('material-groups')
+  findAllMaterialGroups() {
+    return this.mastersService.findAllMaterialGroups();
+  }
+
+  @Get('material-groups/:id')
+  findOneMaterialGroup(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mastersService.findOneMaterialGroup(id);
+  }
+
+  @Post('material-groups')
+  createMaterialGroup(@Body('name') name: string) {
+    return this.mastersService.createMaterialGroup(name);
+  }
+
+  @Patch('material-groups/:id')
+  updateMaterialGroup(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('name') name: string,
+  ) {
+    return this.mastersService.updateMaterialGroup(id, name);
+  }
+
+  @Delete('material-groups/:id')
+  removeMaterialGroup(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mastersService.removeMaterialGroup(id);
   }
 
   // ─── Stages ──────────────────────────────────────────────────────────────────
@@ -108,5 +159,47 @@ export class MastersController {
   @Delete('workshops/:id')
   removeWorkshop(@Param('id', ParseUUIDPipe) id: string) {
     return this.mastersService.removeWorkshop(id);
+  }
+
+  // ─── Material Sizes ─────────────────────────────────────────────────────────
+
+  @Get('materials/:materialId/sizes')
+  findAllSizesByMaterial(@Param('materialId', ParseUUIDPipe) materialId: string) {
+    return this.mastersService.findAllSizesByMaterial(materialId);
+  }
+
+  @Post('materials/:materialId/sizes')
+  createMaterialSize(
+    @Param('materialId', ParseUUIDPipe) materialId: string,
+    @Body() dto: CreateMaterialSizeDto,
+  ) {
+    return this.mastersService.createMaterialSize({ ...dto, materialId });
+  }
+
+  @Post('materials/:materialId/sizes/bulk')
+  bulkCreateMaterialSizes(
+    @Param('materialId', ParseUUIDPipe) materialId: string,
+    @Body() dto: BulkCreateMaterialSizeDto,
+  ) {
+    return this.mastersService.bulkCreateMaterialSizes(materialId, dto);
+  }
+
+  @Get('materials/:materialId/sizes/:id')
+  getMaterialWithSizes(@Param('materialId', ParseUUIDPipe) materialId: string) {
+    return this.mastersService.getMaterialWithSizes(materialId);
+  }
+
+  @Patch('materials/:materialId/sizes/:id')
+  updateMaterialSize(
+    @Param('materialId', ParseUUIDPipe) materialId: string,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateMaterialSizeDto,
+  ) {
+    return this.mastersService.updateMaterialSize(id, dto);
+  }
+
+  @Delete('materials/:materialId/sizes/:id')
+  removeMaterialSize(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mastersService.removeMaterialSize(id);
   }
 }

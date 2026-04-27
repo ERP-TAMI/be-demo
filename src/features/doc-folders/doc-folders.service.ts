@@ -4,8 +4,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { DocFolder } from './entities/doc-folder.entity.js';
-import { DocFile } from './entities/doc-file.entity.js';
+import { DocFolder } from './entities/doc-folder.entity';
+import { DocFile } from './entities/doc-file.entity';
 import { UploadsService } from '../uploads/uploads.service.js';
 
 @Injectable()

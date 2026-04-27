@@ -5,8 +5,8 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
-import { StyleAs3bStep } from './entities/style-as3b-step.entity.js';
-import { Style } from './entities/style.entity.js';
+import { StyleAs3bStep } from './entities/style-as3b-step.entity';
+import { Style } from './entities/style.entity';
 
 @Injectable()
 export class StyleAs3bService {

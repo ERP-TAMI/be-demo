@@ -1,5 +1,5 @@
 import { IsString, IsOptional, IsEnum } from 'class-validator';
-import { StyleStatus } from '../entities/style.entity.js';
+import { StyleStatus } from '../entities/style.entity';
 
 export class UpdateStyleDto {
   @IsString()

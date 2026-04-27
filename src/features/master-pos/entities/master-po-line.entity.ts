@@ -6,8 +6,8 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { MasterPo } from './master-po.entity.js';
-import { PoLine } from '../../po-lines/entities/po-line.entity.js';
+import { MasterPo } from './master-po.entity';
+import { PoLine } from '../../po-lines/entities/po-line.entity';
 
 @Entity('master_po_lines')
 export class MasterPoLine {

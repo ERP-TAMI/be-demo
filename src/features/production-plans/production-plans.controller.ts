@@ -17,7 +17,7 @@ import { ProductionPlansService } from './production-plans.service.js';
 import { PlansSseService } from './plans-sse.service.js';
 import { UpsertDailyPlanDto } from './dto/upsert-daily-plan.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { ProductionPlan } from './entities/production-plan.entity.js';
+import { ProductionPlan } from './entities/production-plan.entity';
 
 @Controller('production-plans')
 export class ProductionPlansController {
