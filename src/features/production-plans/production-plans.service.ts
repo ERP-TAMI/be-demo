@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductionPlan } from './entities/production-plan.entity.js';
 import { DailyPlan } from './entities/daily-plan.entity.js';
+import { DynamicTargetEngineService } from './dynamic-target.engine.js';
+import { PlansSseService } from './plans-sse.service.js';
 
 @Injectable()
 export class ProductionPlansService {
@@ -11,6 +13,8 @@ export class ProductionPlansService {
     private readonly planRepo: Repository<ProductionPlan>,
     @InjectRepository(DailyPlan)
     private readonly dailyRepo: Repository<DailyPlan>,
+    private readonly engine: DynamicTargetEngineService,
+    private readonly sse: PlansSseService,
   ) {}
 
   async findAll(filters?: {
@@ -25,15 +29,6 @@ export class ProductionPlansService {
     if (filters?.workshopId) where.workshopId = filters.workshopId;
     if (filters?.month) where.month = filters.month;
     if (filters?.year) where.year = filters.year;
-
-    // In TypeORM 0.3, to filter nested relations using find():
-    // We would need to set where.line = { po: { poCode: ILike('%...%') } }
-    // As a workaround for ILike without importing it, we can just fetch and filter in memory if needed,
-    // but a querybuilder without deeply joined collections is also an option.
-    // However, relationLoadStrategy: 'query' on a .find() is safest for deep trees.
-    if (filters?.poCode) {
-      // We can't easily ILike without import, so just rely on frontend filter or minimal relations
-    }
 
     const plans = await this.planRepo.find({
       where,
@@ -56,7 +51,6 @@ export class ProductionPlansService {
       if (p.dailyPlans) p.dailyPlans.sort((a, b) => a.day - b.day);
     });
 
-    // Sub-optimal in-memory filter for poCode to avoid syntax issues with missing TypeORM ops imports
     if (filters?.poCode) {
       const code = filters.poCode.toLowerCase().trim();
       return plans.filter((p) =>
@@ -112,6 +106,7 @@ export class ProductionPlansService {
     day: number,
     plannedQty: number,
     actualQty?: number,
+    isManualOverride?: boolean,
   ): Promise<DailyPlan> {
     await this.findOne(planId);
     let daily = await this.dailyRepo.findOne({ where: { planId, day } });
@@ -120,18 +115,45 @@ export class ProductionPlansService {
     }
     daily.plannedQty = plannedQty;
     if (actualQty !== undefined) daily.actualQty = actualQty;
-    return this.dailyRepo.save(daily);
+    if (isManualOverride !== undefined) daily.isManualOverride = isManualOverride;
+    await this.dailyRepo.save(daily);
+
+    // Run engine when actual is updated OR a manual override is saved
+    const shouldRunEngine = actualQty !== undefined || isManualOverride === true;
+    if (shouldRunEngine) {
+      await this.engine.recalculate(planId);
+      this.sse.emit(planId);
+    }
+
+    return this.dailyRepo.findOne({ where: { planId, day } }) as Promise<DailyPlan>;
   }
 
   async bulkUpsertDailyPlans(
     planId: string,
-    days: Array<{ day: number; plannedQty: number; actualQty?: number }>,
+    days: Array<{
+      day: number;
+      plannedQty: number;
+      actualQty?: number;
+      isManualOverride?: boolean;
+    }>,
   ): Promise<DailyPlan[]> {
     await this.findOne(planId);
-    return Promise.all(
-      days.map((d) =>
-        this.upsertDailyPlan(planId, d.day, d.plannedQty, d.actualQty),
-      ),
+    const saved = await Promise.all(
+      days.map(async (d) => {
+        let daily = await this.dailyRepo.findOne({
+          where: { planId, day: d.day },
+        });
+        if (!daily) daily = this.dailyRepo.create({ planId, day: d.day });
+        daily.plannedQty = d.plannedQty;
+        if (d.actualQty !== undefined) daily.actualQty = d.actualQty;
+        if (d.isManualOverride !== undefined)
+          daily.isManualOverride = d.isManualOverride;
+        return this.dailyRepo.save(daily);
+      }),
     );
+    // Run engine once after all rows saved
+    await this.engine.recalculate(planId);
+    this.sse.emit(planId);
+    return saved;
   }
 }

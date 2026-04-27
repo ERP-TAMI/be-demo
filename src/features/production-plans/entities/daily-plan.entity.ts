@@ -29,4 +29,7 @@ export class DailyPlan {
 
   @Column({ type: 'int', default: 0, name: 'actual_qty' })
   actualQty: number;
+
+  @Column({ type: 'boolean', default: false, name: 'is_manual_override' })
+  isManualOverride: boolean;
 }
