@@ -19,8 +19,11 @@ export class ProductionDocSizeRow {
   @Column({ type: 'uuid', name: 'doc_id' })
   docId: string;
 
-  @Column({ type: 'varchar', length: 255, name: 'row_name' })
+  @Column({ type: 'varchar', length: 255, name: 'row_name', default: '' })
   rowName: string;
+
+  @Column({ type: 'text', nullable: true, name: 'image_url' })
+  imageUrl: string | null;
 
   @Column({ type: 'varchar', length: 50, nullable: true, name: 's_value' })
   sValue: string | null;

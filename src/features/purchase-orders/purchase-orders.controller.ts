@@ -17,6 +17,9 @@ import {
 } from './dto/purchase-order.dto.js';
 import { PoStatus } from './entities/purchase-order.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
+import { UserRole } from '../user/entities/user.entity';
 
 @UseGuards(JwtAuthGuard)
 @Controller('purchase-orders')
@@ -43,7 +46,12 @@ export class PurchaseOrdersController {
     return this.service.findLogs(id);
   }
 
+  /**
+   * Tạo PO Tổng — chỉ TPKH được phép upload PO gốc.
+   */
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TPKH)
   create(
     @Body() dto: CreatePurchaseOrderDto,
     @Request() req: { user?: { email: string } },

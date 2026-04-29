@@ -19,6 +19,8 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { PoLinesService } from './po-lines.service.js';
 import { LineStatus, PoLine } from './entities/po-line.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { LineAs3bStep } from './entities/line-as3b-step.entity';
 import { LineSample } from './entities/line-sample.entity';
 import { UserRole } from '../user/entities/user.entity';
@@ -46,6 +48,8 @@ export class PoLinesController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.NVKH, UserRole.TPKH)
   create(
     @Param('poId', ParseUUIDPipe) poId: string,
     @Body() body: Partial<PoLine>,
@@ -271,5 +275,45 @@ export class PoLinesController {
       actorRole: req.user.role,
       reason,
     });
+  }
+
+  // ─── Lock / Unlock (chỉ TPKH) ────────────────────────────────────────────
+
+  /**
+   * POST /api/v1/purchase-orders/:poId/lines/:id/lock
+   * Chốt SP Final — chỉ TPKH.
+   * Tự động tạo BOM Draft V1 rỗng sau khi khoá.
+   */
+  @Post(':id/lock')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TPKH)
+  lockLine(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: { user?: { email?: string } },
+  ) {
+    return this.service.lockLine(id, req.user?.email ?? 'system');
+  }
+
+  /**
+   * POST /api/v1/purchase-orders/:poId/lines/:id/unlock
+   * Mở khoá SP — chỉ TPKH.
+   */
+  @Post(':id/unlock')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TPKH)
+  unlockLine(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Request() req: { user?: { email?: string } },
+  ) {
+    return this.service.unlockLine(id, req.user?.email ?? 'system');
+  }
+
+  /**
+   * GET /api/v1/purchase-orders/:poId/lines/:id/versions
+   * Xem lịch sử phiên bản của PoLine.
+   */
+  @Get(':id/versions')
+  getVersionHistory(@Param('id', ParseUUIDPipe) id: string) {
+    return this.service.findVersionHistory(id);
   }
 }

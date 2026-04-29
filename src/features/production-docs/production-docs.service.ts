@@ -9,6 +9,7 @@ import { ProductionDocSection } from './entities/production-doc-section.entity';
 import { SaveProductionDocDto } from './dto/save-production-doc.dto.js';
 import { PoLine } from '../po-lines/entities/po-line.entity';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
+import { StyleProductionDoc } from '../styles/entities/style-production-doc.entity';
 
 @Injectable()
 export class ProductionDocsService {
@@ -23,6 +24,8 @@ export class ProductionDocsService {
     private readonly lineRepo: Repository<PoLine>,
     @InjectRepository(PurchaseOrder)
     private readonly poRepo: Repository<PurchaseOrder>,
+    @InjectRepository(StyleProductionDoc)
+    private readonly styleDocRepo: Repository<StyleProductionDoc>,
   ) {}
 
   async findByLineId(lineId: string): Promise<ProductionDoc | null> {
@@ -59,13 +62,15 @@ export class ProductionDocsService {
     if (dto.sizeRows !== undefined) {
       await this.sizeRowRepo.delete({ docId: doc.id });
       if (dto.sizeRows.length > 0) {
-        const rows = dto.sizeRows.map((r, i) =>
-          this.sizeRowRepo.create({
-            ...r,
+        const rows = dto.sizeRows.map((r, i) => {
+          const { id, ...rest } = r;
+          return this.sizeRowRepo.create({
+            ...rest,
+            rowName: r.rowName ?? '',
             docId: doc.id,
             orderIndex: r.orderIndex ?? i,
-          }),
-        );
+          });
+        });
         await this.sizeRowRepo.save(rows);
       }
     }
@@ -73,15 +78,76 @@ export class ProductionDocsService {
     if (dto.sections !== undefined) {
       await this.sectionRepo.delete({ docId: doc.id });
       if (dto.sections.length > 0) {
-        const sections = dto.sections.map((s, i) =>
-          this.sectionRepo.create({
-            ...s,
+        const sections = dto.sections.map((s, i) => {
+          const { id, ...rest } = s;
+          return this.sectionRepo.create({
+            ...rest,
             docId: doc.id,
             orderIndex: s.orderIndex ?? i,
-          }),
-        );
+          });
+        });
         await this.sectionRepo.save(sections);
       }
+    }
+
+    return this.findByLineId(lineId);
+  }
+
+  /**
+   * Clone production doc data from the parent Style into this PoLine's doc.
+   * Safe to call for existing lines that were created before the auto-clone fix.
+   */
+  async syncFromStyle(lineId: string): Promise<ProductionDoc | null> {
+    const line = await this.lineRepo.findOne({ where: { id: lineId } });
+    if (!line?.styleId) return null;
+
+    const styleDoc = await this.styleDocRepo.findOne({ where: { styleId: line.styleId } });
+    if (!styleDoc) return null;
+
+    // Upsert the base doc
+    let doc = await this.docRepo.findOne({ where: { lineId } });
+    if (!doc) doc = this.docRepo.create({ lineId });
+
+    doc.section1ImageUrl = styleDoc.section1ImageUrl ?? doc.section1ImageUrl;
+    doc.section1MoTa = styleDoc.section1Description ?? doc.section1MoTa;
+    doc.section2PhuLieu = styleDoc.section2Accessories ?? doc.section2PhuLieu;
+    doc.section3LuuYTraiCat = styleDoc.section3Notes ?? doc.section3LuuYTraiCat;
+    doc.section4CommentKhachHang = styleDoc.section4CustomerFeedback ?? doc.section4CommentKhachHang;
+    await this.docRepo.save(doc);
+
+    // Sync sizeRows from sizeData
+    await this.sizeRowRepo.delete({ docId: doc.id });
+    if (styleDoc.sizeData && Array.isArray(styleDoc.sizeData) && styleDoc.sizeData.length > 0) {
+      const rows = (styleDoc.sizeData as any[]).map((r, i) =>
+        this.sizeRowRepo.create({
+          docId: doc.id,
+          rowName: r.rowName ?? '',
+          imageUrl: r.imageUrl ?? null,
+          sValue: r.sValue ?? null,
+          mValue: r.mValue ?? null,
+          lValue: r.lValue ?? null,
+          xlValue: r.xlValue ?? null,
+          patternValue: r.patternValue ?? null,
+          tolPlusMinus: r.tolPlusMinus ?? null,
+          orderIndex: r.orderIndex ?? i,
+        })
+      );
+      await this.sizeRowRepo.save(rows);
+    }
+
+    // Sync sections
+    await this.sectionRepo.delete({ docId: doc.id });
+    if (styleDoc.sections && Array.isArray(styleDoc.sections) && styleDoc.sections.length > 0) {
+      const sections = (styleDoc.sections as any[]).map((s, i) =>
+        this.sectionRepo.create({
+          docId: doc.id,
+          title: s.title,
+          content: s.content,
+          imageUrls: s.imageUrls,
+          orderIndex: s.orderIndex ?? i,
+        })
+      );
+      await this.sectionRepo.save(sections);
     }
 
     return this.findByLineId(lineId);

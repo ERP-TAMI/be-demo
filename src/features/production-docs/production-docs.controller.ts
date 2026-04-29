@@ -43,6 +43,11 @@ export class ProductionDocsController {
     return this.service.upsert(lineId, dto);
   }
 
+  @Post('sync-from-style')
+  async syncFromStyle(@Param('lineId', ParseUUIDPipe) lineId: string) {
+    return this.service.syncFromStyle(lineId);
+  }
+
   @Post('upload-image')
   @UseInterceptors(
     FileInterceptor('file', {

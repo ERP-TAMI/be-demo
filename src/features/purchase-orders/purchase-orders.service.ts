@@ -123,6 +123,7 @@ export class PurchaseOrdersService {
       order: { createdAt: 'DESC' },
       relations: [
         'lines',
+        'lines.style',
         'files',
         'lines.colors',
         'lines.colors.sizes',
@@ -143,6 +144,7 @@ export class PurchaseOrdersService {
       where: { id },
       relations: [
         'lines',
+        'lines.style',
         'files',
         'lines.colors',
         'lines.colors.sizes',

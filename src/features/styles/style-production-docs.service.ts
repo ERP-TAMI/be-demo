@@ -5,6 +5,8 @@ import ExcelJS from 'exceljs';
 import axios from 'axios';
 import { StyleProductionDoc, ProductionDocStatus } from './entities/style-production-doc.entity';
 import { Style } from './entities/style.entity';
+import { UpdateStyleProductionDocDto } from './dto/update-style-production-doc.dto.js';
+import { CreateStyleProductionDocDto } from './dto/create-style-production-doc.dto.js';
 
 @Injectable()
 export class StyleProductionDocsService {
@@ -30,16 +32,11 @@ export class StyleProductionDocsService {
 
   async create(
     styleId: string,
-    dto: {
-      name: string;
-      description?: string;
-      createdBy?: string;
-    },
+    dto: CreateStyleProductionDocDto & { createdBy?: string },
   ): Promise<StyleProductionDoc> {
     const doc = this.docRepo.create({
+      ...dto,
       styleId,
-      name: dto.name,
-      description: dto.description || '',
       status: ProductionDocStatus.DRAFT,
       createdBy: dto.createdBy || 'system',
     });
@@ -48,19 +45,7 @@ export class StyleProductionDocsService {
 
   async update(
     id: string,
-    dto: Partial<{
-      name: string;
-      description: string;
-      status: ProductionDocStatus;
-      section1Description: string;
-      section1ImageUrl: string;
-      section2Accessories: string;
-      section3Notes: string;
-      section4CustomerFeedback: string;
-      sizeData: any;
-      sections: { title: string; content: string; imageUrls: string[]; orderIndex: number }[];
-      attachments: { name: string; url: string; size: number }[];
-    }>,
+    dto: UpdateStyleProductionDocDto,
   ): Promise<StyleProductionDoc> {
     const doc = await this.findOne(id);
     Object.assign(doc, dto);

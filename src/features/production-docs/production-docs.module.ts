@@ -8,6 +8,7 @@ import { ProductionDocSection } from './entities/production-doc-section.entity';
 import { UploadsModule } from '../uploads/uploads.module.js';
 import { PoLine } from '../po-lines/entities/po-line.entity';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
+import { StyleProductionDoc } from '../styles/entities/style-production-doc.entity';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity
       ProductionDocSection,
       PoLine,
       PurchaseOrder,
+      StyleProductionDoc,
     ]),
     UploadsModule,
   ],
