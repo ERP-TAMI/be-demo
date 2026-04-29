@@ -3,7 +3,8 @@ import { Type } from 'class-transformer';
 
 export class SizeRowDto {
   @IsOptional() @IsString() id?: string;
-  @IsString() rowName: string;
+  @IsOptional() @IsString() rowName?: string;
+  @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsString() sValue?: string;
   @IsOptional() @IsString() mValue?: string;
   @IsOptional() @IsString() lValue?: string;

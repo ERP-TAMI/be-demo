@@ -23,6 +23,8 @@ import { StyleProductionDocsService } from './style-production-docs.service.js';
 import { ProductionDocStatus } from './entities/style-production-doc.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { UploadsService } from '../uploads/uploads.service.js';
+import { UpdateStyleProductionDocDto } from './dto/update-style-production-doc.dto.js';
+import { CreateStyleProductionDocDto } from './dto/create-style-production-doc.dto.js';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -43,7 +45,7 @@ export class StyleProductionDocsController {
   @Post()
   create(
     @Param('styleId', ParseUUIDPipe) styleId: string,
-    @Body() body: { name: string; description?: string },
+    @Body() body: CreateStyleProductionDocDto,
     @Request() req: { user?: { email: string } },
   ) {
     return this.service.create(styleId, {
@@ -56,7 +58,7 @@ export class StyleProductionDocsController {
   update(
     @Param('styleId', ParseUUIDPipe) styleId: string,
     @Param('docId', ParseUUIDPipe) docId: string,
-    @Body() body: any,
+    @Body() body: UpdateStyleProductionDocDto,
   ) {
     return this.service.update(docId, body);
   }
