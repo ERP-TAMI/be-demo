@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddColorAndVersionToPoLines1777800000000
+export class AddColorAndVersionToPoLines1777700000000
   implements MigrationInterface
 {
-  name = 'AddColorAndVersionToPoLines1777800000000';
+  name = 'AddColorAndVersionToPoLines1777700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // 1. Create po_line_versions table
