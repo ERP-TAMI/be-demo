@@ -67,7 +67,9 @@ export class ColorCardService {
 
     const po = await this.poRepo.findOne({ where: { id: line.poId } });
     if (!po) {
-      throw new NotFoundException(`PurchaseOrder not found for line #${line.id}`);
+      throw new NotFoundException(
+        `PurchaseOrder not found for line #${line.id}`,
+      );
     }
 
     return { color, line, po };
@@ -80,22 +82,25 @@ export class ColorCardService {
   ): void {
     if (!UPLOAD_ROLES.includes(actorRole)) {
       throw new ForbiddenException(
-        `Role "${actorRole}" cannot upload color cards.`,
+        `Vai trò "${actorRole}" không có quyền cập nhật bảng màu.`,
       );
     }
 
-    if (
-      line.status === LineStatus.FINAL ||
-      line.status === LineStatus.CANCELLED
-    ) {
+    if (line.status === LineStatus.FINAL) {
       throw new ForbiddenException(
-        `Cannot upload color card when line is "${line.status}".`,
+        'Sản phẩm đã chốt (Final). Vui lòng yêu cầu TPKH mở khóa để chỉnh sửa.',
+      );
+    }
+
+    if (line.status === LineStatus.CANCELLED) {
+      throw new ForbiddenException(
+        'Sản phẩm đã bị hủy. Không thể cập nhật bảng màu.',
       );
     }
 
     if (po.status === PoStatus.PO_FINAL) {
       throw new ForbiddenException(
-        'Cannot upload color card when PO is Final.',
+        'PO đã chốt Final. Không thể cập nhật bảng màu.',
       );
     }
   }
@@ -130,7 +135,10 @@ export class ColorCardService {
       `[upsertColorCard] START colorId=${opts.colorId} actor=${opts.actorId}`,
     );
 
-    const { color, line, po } = await this.resolveColor(opts.poId, opts.colorId);
+    const { color, line, po } = await this.resolveColor(
+      opts.poId,
+      opts.colorId,
+    );
     this.assertCanUpload(line, po, opts.actorRole);
 
     const existing = await this.cardRepo.findOne({

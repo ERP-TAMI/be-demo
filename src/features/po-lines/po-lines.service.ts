@@ -11,7 +11,10 @@ import { PoLineVersion } from './entities/po-line-version.entity';
 import { LineColor } from './entities/line-color.entity';
 import { LineColorSize } from './entities/line-color-size.entity';
 import { LineAs3bStep } from './entities/line-as3b-step.entity';
-import { LineSample, SampleStatus as LineSampleStatus } from './entities/line-sample.entity';
+import {
+  LineSample,
+  SampleStatus as LineSampleStatus,
+} from './entities/line-sample.entity';
 import { SampleColorImage } from './entities/sample-color-image.entity';
 import { LineMappedFile } from './entities/line-mapped-file.entity';
 import { LineFile, LineFileLabel } from './entities/line-file.entity';
@@ -76,7 +79,15 @@ export class PoLinesService {
     private readonly sizeRowRepo: Repository<ProductionDocSizeRow>,
     @InjectRepository(ProductionDocSection)
     private readonly sectionRepo: Repository<ProductionDocSection>,
-  ) { }
+  ) {}
+
+  private assertLineNotLocked(line: PoLine): void {
+    if (line.status === LineStatus.FINAL) {
+      throw new ForbiddenException(
+        'Sản phẩm đã chốt (Final). Vui lòng yêu cầu TPKH mở khóa để chỉnh sửa.',
+      );
+    }
+  }
 
   private async writeLineLog(
     line: PoLine,
@@ -166,14 +177,16 @@ export class PoLinesService {
       );
     }
 
-    // RD có thể chuyển thẳng Draft → Sampling (bỏ qua bước In_Review)
+    // Cho phép RD, NVKH, TPKH chuyển thẳng Draft → Sampling
     if (
       beforeStatus === LineStatus.DRAFT &&
       nextStatus === LineStatus.SAMPLING &&
-      actorRole !== UserRole.RD
+      actorRole !== UserRole.RD &&
+      actorRole !== UserRole.NVKH &&
+      actorRole !== UserRole.TPKH
     ) {
       throw new ForbiddenException(
-        'Chỉ R&D mới được chuyển sản phẩm sang Sampling',
+        'Chỉ R&D, NVKH, TPKH mới được chuyển sản phẩm sang Sampling',
       );
     }
 
@@ -209,7 +222,7 @@ export class PoLinesService {
     const line = await this.lineRepo.findOne({
       where: { id },
       relations: [
-        'style',               // Style cha — hiển thị thông tin kế thừa
+        'style', // Style cha — hiển thị thông tin kế thừa
         'colors',
         'colors.sizes',
         'files',
@@ -236,7 +249,9 @@ export class PoLinesService {
 
     let styleEntity: Style | null = null;
     if (dto.styleId) {
-      styleEntity = await this.styleRepo.findOne({ where: { id: dto.styleId } });
+      styleEntity = await this.styleRepo.findOne({
+        where: { id: dto.styleId },
+      });
       const style = styleEntity;
       if (!style) {
         throw new BadRequestException(`Không tìm thấy Style #${dto.styleId}`);
@@ -260,7 +275,9 @@ export class PoLinesService {
       // Normalize category case (e.g. "JACKET" -> "Jacket") to avoid enum violation
       let finalCategory: LineCategory | undefined = undefined;
       if (inheritedCategory && typeof inheritedCategory === 'string') {
-        const match = Object.values(LineCategory).find(v => v.toLowerCase() === inheritedCategory.trim().toLowerCase());
+        const match = Object.values(LineCategory).find(
+          (v) => v.toLowerCase() === inheritedCategory.trim().toLowerCase(),
+        );
         finalCategory = match || undefined;
       }
 
@@ -270,7 +287,7 @@ export class PoLinesService {
         styleCode: inheritedStyleCode,
         productName: inheritedProductName,
         category: finalCategory,
-        status: LineStatus.DRAFT,
+        status: LineStatus.SAMPLING, // Tự động vào trạng thái đang thực hiện khi mapping
         versionNumber: 1,
       });
       const saved = await this.lineRepo.save(line);
@@ -309,7 +326,9 @@ export class PoLinesService {
       }
 
       // ── Kế thừa Tài liệu sản xuất từ Style ───────────────────────────────
-      const styleDoc = await this.styleDocRepo.findOne({ where: { styleId: dto.styleId } });
+      const styleDoc = await this.styleDocRepo.findOne({
+        where: { styleId: dto.styleId },
+      });
       if (styleDoc) {
         const prodDoc = this.docRepo.create({
           lineId: saved.id,
@@ -324,11 +343,15 @@ export class PoLinesService {
         // Clone sizeData from Style → PoLine sizeRows.
         // Style stores images-only ({imageUrl, orderIndex}); now that the PO Line
         // editor is also image-based, copy every entry regardless of rowName.
-        if (styleDoc.sizeData && Array.isArray(styleDoc.sizeData) && styleDoc.sizeData.length > 0) {
+        if (
+          styleDoc.sizeData &&
+          Array.isArray(styleDoc.sizeData) &&
+          styleDoc.sizeData.length > 0
+        ) {
           const rows = styleDoc.sizeData.map((r: any, i: number) =>
             this.sizeRowRepo.create({
               docId: savedProdDoc.id,
-              rowName: r.rowName ?? '',          // default '' — NOT NULL constraint is satisfied
+              rowName: r.rowName ?? '', // default '' — NOT NULL constraint is satisfied
               imageUrl: r.imageUrl ?? null,
               sValue: r.sValue ?? null,
               mValue: r.mValue ?? null,
@@ -337,7 +360,7 @@ export class PoLinesService {
               patternValue: r.patternValue ?? null,
               tolPlusMinus: r.tolPlusMinus ?? null,
               orderIndex: r.orderIndex ?? i,
-            })
+            }),
           );
           await this.sizeRowRepo.save(rows);
         }
@@ -351,7 +374,7 @@ export class PoLinesService {
               content: s.content,
               imageUrls: s.imageUrls,
               orderIndex: s.orderIndex ?? i,
-            })
+            }),
           );
           await this.sectionRepo.save(sections);
         }
@@ -379,7 +402,9 @@ export class PoLinesService {
               const ls = this.sampleRepo.create({
                 lineId: saved.id,
                 round: roundCounter++,
-                sampleDate: v.dateTime ? new Date(v.dateTime).toISOString().slice(0, 10) : new Date(v.createdAt).toISOString().slice(0, 10),
+                sampleDate: v.dateTime
+                  ? new Date(v.dateTime).toISOString().slice(0, 10)
+                  : new Date(v.createdAt).toISOString().slice(0, 10),
                 feedback: v.description || '',
                 status: LineSampleStatus.DANG_LAM,
               });
@@ -388,11 +413,13 @@ export class PoLinesService {
               totalSamplesCopied++;
 
               if (v.images && Array.isArray(v.images) && v.images.length > 0) {
-                const imgsToSave = v.images.map(imgUrl => this.imageRepo.create({
-                  sampleId: savedLs.id,
-                  colorName: 'Ảnh mẫu từ Style',
-                  imageUrl: imgUrl,
-                }));
+                const imgsToSave = v.images.map((imgUrl) =>
+                  this.imageRepo.create({
+                    sampleId: savedLs.id,
+                    colorName: 'Ảnh mẫu từ Style',
+                    imageUrl: imgUrl,
+                  }),
+                );
                 await this.imageRepo.save(imgsToSave);
               }
             }
@@ -401,12 +428,15 @@ export class PoLinesService {
           // 2. Copy current (latest) version
           let statusEnum = LineSampleStatus.DANG_LAM;
           if (s.status === 'Approved') statusEnum = LineSampleStatus.DA_DUYET;
-          else if (s.status === 'In_Analysis') statusEnum = LineSampleStatus.CAN_CHINH_SUA;
+          else if (s.status === 'In_Analysis')
+            statusEnum = LineSampleStatus.CAN_CHINH_SUA;
 
           const ls = this.sampleRepo.create({
             lineId: saved.id,
             round: roundCounter++,
-            sampleDate: s.dateTime ? new Date(s.dateTime).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+            sampleDate: s.dateTime
+              ? new Date(s.dateTime).toISOString().slice(0, 10)
+              : new Date().toISOString().slice(0, 10),
             feedback: s.analysisResult || s.description || '',
             status: statusEnum,
           });
@@ -415,11 +445,13 @@ export class PoLinesService {
           totalSamplesCopied++;
 
           if (s.images && Array.isArray(s.images) && s.images.length > 0) {
-            const imgsToSave = s.images.map(imgUrl => this.imageRepo.create({
-              sampleId: savedLs.id,
-              colorName: 'Ảnh mẫu từ Style',
-              imageUrl: imgUrl,
-            }));
+            const imgsToSave = s.images.map((imgUrl) =>
+              this.imageRepo.create({
+                sampleId: savedLs.id,
+                colorName: 'Ảnh mẫu từ Style',
+                imageUrl: imgUrl,
+              }),
+            );
             await this.imageRepo.save(imgsToSave);
           }
         }
@@ -452,6 +484,7 @@ export class PoLinesService {
     }
 
     const line = await this.findOne(id);
+    this.assertLineNotLocked(line);
 
     // Business Rule: KHÔNG GHI ĐÈ — lưu snapshot trước khi thay đổi
     const snapshot: Record<string, any> = {
@@ -478,7 +511,15 @@ export class PoLinesService {
     line.versionNumber = (line.versionNumber ?? 1) + 1;
 
     // User-editable fields: respect user input, do NOT overwrite with parent style values
-    const editableFields = ['styleCode', 'productName', 'category', 'colorId', 'colorName', 'deadline', 'material'];
+    const editableFields = [
+      'styleCode',
+      'productName',
+      'category',
+      'colorId',
+      'colorName',
+      'deadline',
+      'material',
+    ];
     const changes = Object.entries(lineDto).map(([field, after]) => ({
       field,
       label: field,
@@ -527,7 +568,8 @@ export class PoLinesService {
     if (line.colors && line.colors.length > 0) {
       totalQty = line.colors.reduce(
         (sum, c) =>
-          sum + (c.sizes || []).reduce((s, sz) => s + Number(sz.quantity ?? 0), 0),
+          sum +
+          (c.sizes || []).reduce((s, sz) => s + Number(sz.quantity ?? 0), 0),
         0,
       );
     }
@@ -553,7 +595,14 @@ export class PoLinesService {
 
     await this.writeLineLog(savedLine, actor, PoEventType.LINE_STATUS_CHANGED, {
       reason: `TPKH chốt Final — BOM Draft V1 đã được tạo tự động (BOM #${savedBom.id.slice(0, 8)})`,
-      changes: [{ field: 'status', label: 'Trạng thái', before: line.status, after: LineStatus.FINAL }],
+      changes: [
+        {
+          field: 'status',
+          label: 'Trạng thái',
+          before: line.status,
+          after: LineStatus.FINAL,
+        },
+      ],
     });
 
     return { line: savedLine, bom: savedBom };
@@ -578,7 +627,14 @@ export class PoLinesService {
 
     await this.writeLineLog(saved, actor, PoEventType.LINE_STATUS_CHANGED, {
       reason: `TPKH mở khoá sản phẩm để chỉnh sửa`,
-      changes: [{ field: 'status', label: 'Trạng thái', before: LineStatus.FINAL, after: LineStatus.SAMPLING }],
+      changes: [
+        {
+          field: 'status',
+          label: 'Trạng thái',
+          before: LineStatus.FINAL,
+          after: LineStatus.SAMPLING,
+        },
+      ],
     });
 
     return saved;
@@ -666,7 +722,8 @@ export class PoLinesService {
   // ─── Colors & Sizes ───────────────────────────────────────────────────
 
   async addColor(lineId: string, colorName: string): Promise<LineColor> {
-    await this.findOne(lineId);
+    const line = await this.findOne(lineId);
+    this.assertLineNotLocked(line);
     const color = this.colorRepo.create({ lineId, colorName });
     return this.colorRepo.save(color);
   }
@@ -676,6 +733,10 @@ export class PoLinesService {
     sizeLabel: string,
     quantity: number,
   ): Promise<LineColorSize> {
+    const color = await this.colorRepo.findOne({ where: { id: colorId } });
+    if (!color) throw new NotFoundException(`Color #${colorId} not found`);
+    const line = await this.findOne(color.lineId);
+    this.assertLineNotLocked(line);
     const size = this.sizeRepo.create({ colorId, sizeLabel, quantity });
     return this.sizeRepo.save(size);
   }
@@ -683,6 +744,8 @@ export class PoLinesService {
   async removeColor(colorId: string): Promise<void> {
     const color = await this.colorRepo.findOne({ where: { id: colorId } });
     if (!color) throw new NotFoundException(`Color #${colorId} not found`);
+    const line = await this.findOne(color.lineId);
+    this.assertLineNotLocked(line);
     await this.colorRepo.remove(color);
   }
 
@@ -700,6 +763,7 @@ export class PoLinesService {
     actor = 'system',
   ): Promise<LineFile> {
     const line = await this.findOne(lineId);
+    this.assertLineNotLocked(line);
     const file = this.lineFileRepo.create({
       lineId,
       fileUrl: dto.fileKey,
@@ -720,6 +784,7 @@ export class PoLinesService {
     const file = await this.lineFileRepo.findOne({ where: { id: fileId } });
     if (!file) throw new NotFoundException(`LineFile #${fileId} not found`);
     const line = await this.findOne(file.lineId);
+    this.assertLineNotLocked(line);
     await this.lineFileRepo.remove(file);
     await this.writeLineLog(line, actor, PoEventType.LINE_FILE_REMOVED, {
       reason: `Xóa file ${file.label}: ${file.fileName}`,
@@ -742,6 +807,7 @@ export class PoLinesService {
     actor = 'system',
   ): Promise<LineAs3bStep> {
     const line = await this.findOne(lineId);
+    this.assertLineNotLocked(line);
     const step = this.stepRepo.create({ ...dto, lineId });
     const saved = await this.stepRepo.save(step);
     await this.writeLineLog(line, actor, PoEventType.LINE_UPDATED, {
@@ -754,6 +820,7 @@ export class PoLinesService {
     const step = await this.stepRepo.findOne({ where: { id: stepId } });
     if (!step) throw new NotFoundException(`Step #${stepId} not found`);
     const line = await this.findOne(step.lineId);
+    this.assertLineNotLocked(line);
     await this.stepRepo.remove(step);
     await this.writeLineLog(line, actor, PoEventType.LINE_UPDATED, {
       reason: `Xóa công đoạn ${step.stepName}`,
@@ -766,6 +833,7 @@ export class PoLinesService {
     actor = 'system',
   ): Promise<LineAs3bStep[]> {
     const line = await this.findOne(lineId);
+    this.assertLineNotLocked(line);
 
     // Xóa các bước cũ
     await this.stepRepo.delete({ lineId });
@@ -805,17 +873,19 @@ export class PoLinesService {
     actor = 'system',
   ): Promise<LineSample> {
     const line = await this.findOne(lineId);
+    this.assertLineNotLocked(line);
     const { images, ...sampleDto } = dto;
     const sample = this.sampleRepo.create({ ...sampleDto, lineId });
     const saved = await this.sampleRepo.save(sample);
 
     // Lưu ảnh sau khi có sampleId
     if (images && images.length > 0) {
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const imgEntities = images.map((img) =>
         this.imageRepo.create({
           sampleId: saved.id,
           colorName: img.colorName || '',
-          colorId: img.colorId || undefined,
+          colorId: (img.colorId && uuidRegex.test(img.colorId)) ? img.colorId : undefined,
           imageUrl: img.imageUrl,
         }),
       );
@@ -842,6 +912,7 @@ export class PoLinesService {
     const sample = await this.sampleRepo.findOne({ where: { id: sampleId } });
     if (!sample) throw new NotFoundException(`Sample #${sampleId} not found`);
     const line = await this.findOne(sample.lineId);
+    this.assertLineNotLocked(line);
     const changes = Object.entries(dto).map(([field, after]) => ({
       field,
       label: field,
@@ -874,6 +945,9 @@ export class PoLinesService {
 
     // If we want a simple "Add" (best for Drag & Drop):
     for (const lineId of lineIds) {
+      const line = await this.findOne(lineId);
+      this.assertLineNotLocked(line);
+
       const exists = await this.mappedFileRepo.findOne({
         where: { poFileId: fileId, lineId },
       });
@@ -883,7 +957,6 @@ export class PoLinesService {
           lineId,
         });
         await this.mappedFileRepo.save(mapping);
-        const line = await this.findOne(lineId);
         await this.writeLineLog(line, actor, PoEventType.FILE_ASSIGNED, {
           reason: `Gán tài liệu PO vào sản phẩm`,
         });

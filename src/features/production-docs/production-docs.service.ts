@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
@@ -7,7 +11,7 @@ import { ProductionDoc } from './entities/production-doc.entity';
 import { ProductionDocSizeRow } from './entities/production-doc-size-row.entity';
 import { ProductionDocSection } from './entities/production-doc-section.entity';
 import { SaveProductionDocDto } from './dto/save-production-doc.dto.js';
-import { PoLine } from '../po-lines/entities/po-line.entity';
+import { LineStatus, PoLine } from '../po-lines/entities/po-line.entity';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
 import { StyleProductionDoc } from '../styles/entities/style-production-doc.entity';
 
@@ -28,6 +32,19 @@ export class ProductionDocsService {
     private readonly styleDocRepo: Repository<StyleProductionDoc>,
   ) {}
 
+  private async assertLineNotLocked(lineId: string): Promise<PoLine> {
+    const line = await this.lineRepo.findOne({ where: { id: lineId } });
+    if (!line) {
+      throw new NotFoundException(`PoLine #${lineId} not found`);
+    }
+    if (line.status === LineStatus.FINAL) {
+      throw new ForbiddenException(
+        'Sản phẩm đã chốt (Final). Vui lòng yêu cầu TPKH mở khóa để chỉnh sửa.',
+      );
+    }
+    return line;
+  }
+
   async findByLineId(lineId: string): Promise<ProductionDoc | null> {
     return this.docRepo.findOne({
       where: { lineId },
@@ -43,6 +60,8 @@ export class ProductionDocsService {
     lineId: string,
     dto: SaveProductionDocDto,
   ): Promise<ProductionDoc | null> {
+    await this.assertLineNotLocked(lineId);
+
     let doc = await this.docRepo.findOne({ where: { lineId } });
 
     if (!doc) {
@@ -98,10 +117,12 @@ export class ProductionDocsService {
    * Safe to call for existing lines that were created before the auto-clone fix.
    */
   async syncFromStyle(lineId: string): Promise<ProductionDoc | null> {
-    const line = await this.lineRepo.findOne({ where: { id: lineId } });
+    const line = await this.assertLineNotLocked(lineId);
     if (!line?.styleId) return null;
 
-    const styleDoc = await this.styleDocRepo.findOne({ where: { styleId: line.styleId } });
+    const styleDoc = await this.styleDocRepo.findOne({
+      where: { styleId: line.styleId },
+    });
     if (!styleDoc) return null;
 
     // Upsert the base doc
@@ -112,12 +133,17 @@ export class ProductionDocsService {
     doc.section1MoTa = styleDoc.section1Description ?? doc.section1MoTa;
     doc.section2PhuLieu = styleDoc.section2Accessories ?? doc.section2PhuLieu;
     doc.section3LuuYTraiCat = styleDoc.section3Notes ?? doc.section3LuuYTraiCat;
-    doc.section4CommentKhachHang = styleDoc.section4CustomerFeedback ?? doc.section4CommentKhachHang;
+    doc.section4CommentKhachHang =
+      styleDoc.section4CustomerFeedback ?? doc.section4CommentKhachHang;
     await this.docRepo.save(doc);
 
     // Sync sizeRows from sizeData
     await this.sizeRowRepo.delete({ docId: doc.id });
-    if (styleDoc.sizeData && Array.isArray(styleDoc.sizeData) && styleDoc.sizeData.length > 0) {
+    if (
+      styleDoc.sizeData &&
+      Array.isArray(styleDoc.sizeData) &&
+      styleDoc.sizeData.length > 0
+    ) {
       const rows = (styleDoc.sizeData as any[]).map((r, i) =>
         this.sizeRowRepo.create({
           docId: doc.id,
@@ -130,14 +156,18 @@ export class ProductionDocsService {
           patternValue: r.patternValue ?? null,
           tolPlusMinus: r.tolPlusMinus ?? null,
           orderIndex: r.orderIndex ?? i,
-        })
+        }),
       );
       await this.sizeRowRepo.save(rows);
     }
 
     // Sync sections
     await this.sectionRepo.delete({ docId: doc.id });
-    if (styleDoc.sections && Array.isArray(styleDoc.sections) && styleDoc.sections.length > 0) {
+    if (
+      styleDoc.sections &&
+      Array.isArray(styleDoc.sections) &&
+      styleDoc.sections.length > 0
+    ) {
       const sections = (styleDoc.sections as any[]).map((s, i) =>
         this.sectionRepo.create({
           docId: doc.id,
@@ -145,7 +175,7 @@ export class ProductionDocsService {
           content: s.content,
           imageUrls: s.imageUrls,
           orderIndex: s.orderIndex ?? i,
-        })
+        }),
       );
       await this.sectionRepo.save(sections);
     }
