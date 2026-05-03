@@ -89,14 +89,10 @@ export class SamplesService {
     sample.styleId = dto.styleId || null;
     sample.colorId = dto.colorId || null;
     sample.description = dto.description || null;
-    sample.dateTime = dto.dateTime ? new Date(dto.dateTime) : null;
-    sample.internalNote = dto.internalNote || null;
     sample.files = dto.files || null;
     sample.images = dto.images || null;
     sample.status = SampleStatus.DRAFT;
     sample.createdBy = actor ?? 'system';
-    sample.version = 1;
-    sample.versions = null;
     return this.sampleRepo.save(sample);
   }
 

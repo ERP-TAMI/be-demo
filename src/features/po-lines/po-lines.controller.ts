@@ -28,6 +28,7 @@ import { ColorCardService } from './color-card.service.js';
 
 const MAX_COLOR_CARD_SIZE = 20 * 1024 * 1024; // 20 MB
 const ALLOWED_COLOR_CARD_TYPES = ['image/jpeg', 'image/png'];
+const PO_LINE_EDITOR_ROLES = [UserRole.RD, UserRole.NVKH, UserRole.TPKH];
 
 @UseGuards(JwtAuthGuard)
 @Controller('purchase-orders/:poId/lines')
@@ -59,6 +60,8 @@ export class PoLinesController {
   }
 
   @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() body: Partial<PoLine>,
@@ -89,6 +92,8 @@ export class PoLinesController {
   // ─── Colors ──────────────────────────────────────────────────────────────────
 
   @Post(':id/colors')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   addColor(
     @Param('id', ParseUUIDPipe) lineId: string,
     @Body('colorName') colorName: string,
@@ -97,11 +102,15 @@ export class PoLinesController {
   }
 
   @Delete('colors/:colorId')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   removeColor(@Param('colorId', ParseUUIDPipe) colorId: string) {
     return this.service.removeColor(colorId);
   }
 
   @Post('colors/:colorId/sizes')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   addSize(
     @Param('colorId', ParseUUIDPipe) colorId: string,
     @Body() body: { sizeLabel: string; quantity: number },
@@ -112,6 +121,8 @@ export class PoLinesController {
   // ─── Line Files ─────────────────────────────────────────────────────────────
 
   @Post(':id/files')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   addFile(
     @Param('id', ParseUUIDPipe) lineId: string,
     @Body()
@@ -128,6 +139,8 @@ export class PoLinesController {
   }
 
   @Delete('files/:fileId')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   removeFile(
     @Param('fileId', ParseUUIDPipe) fileId: string,
     @Request() req: { user?: { email?: string } },
@@ -143,6 +156,8 @@ export class PoLinesController {
   }
 
   @Post(':id/as3b-steps')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   addStep(
     @Param('id', ParseUUIDPipe) lineId: string,
     @Body() body: Partial<LineAs3bStep>,
@@ -152,6 +167,8 @@ export class PoLinesController {
   }
 
   @Delete('as3b-steps/:stepId')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   removeStep(
     @Param('stepId', ParseUUIDPipe) stepId: string,
     @Request() req: { user?: { email?: string } },
@@ -160,6 +177,8 @@ export class PoLinesController {
   }
 
   @Put(':id/as3b-steps/sync')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   syncSteps(
     @Param('id', ParseUUIDPipe) lineId: string,
     @Body('steps') steps: Partial<LineAs3bStep>[],
@@ -180,6 +199,8 @@ export class PoLinesController {
   }
 
   @Post(':id/samples')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   addSample(
     @Param('id', ParseUUIDPipe) lineId: string,
     @Body() body: Partial<LineSample>,
@@ -189,6 +210,8 @@ export class PoLinesController {
   }
 
   @Patch('samples/:sampleId')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   updateSample(
     @Param('sampleId', ParseUUIDPipe) sampleId: string,
     @Body() body: Partial<LineSample>,
@@ -204,6 +227,8 @@ export class PoLinesController {
   // ─── File Mappings ───────────────────────────────────────────────────────────
 
   @Post('assign-file')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
   assignFile(
     @Param('poId', ParseUUIDPipe) poId: string,
     @Body() body: { fileId: string; lineIds: string[] },

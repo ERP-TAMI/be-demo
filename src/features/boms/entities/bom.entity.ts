@@ -104,12 +104,6 @@ export class Bom {
   })
   totalCostPerUnit: number;
 
-  @Column({ type: 'uuid', nullable: true, name: 'style_id' })
-  styleId: string;
-
-  @Column({ type: 'uuid', nullable: true, name: 'master_po_id' })
-  masterPoId: string;
-
   @Column({ type: 'date', nullable: true })
   deadline: string;
 

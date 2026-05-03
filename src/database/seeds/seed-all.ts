@@ -139,8 +139,8 @@ async function seed() {
   const mgRepo = AppDataSource.getRepository(MaterialGroup);
   const groupNames = [
     'FUSIBLE', 'TAPE', 'MAIN LABEL', 'SIZE LABEL (SIZECOO)', 'CARE LABEL',
-    'HANGTAG', 'JOKER TAG', 'SWIFTACK', 'POLY BAG', 'HANGER', 'CARTON',
-    'ĐỆM VAI', 'DÂY KÉO', 'DÂY KÉO CUỘN', 'PULL ZIPPER', 'NÚT (BUTTON)',
+    'HANGTAG', 'JOKER TAG', 'SWIFTACK', 'HANGER', 'ĐỆM VAI', 'ZIPPER',
+    'ZIPPER TAPE', 'ZIPPER PULL', 'BUTTON',
   ];
   const groupMap: Record<string, MaterialGroup> = {};
   for (let i = 0; i < groupNames.length; i++) {
@@ -158,154 +158,72 @@ async function seed() {
   const matRepo = AppDataSource.getRepository(Material);
   const materialsData = [
     // FUSIBLE
-    {
-      materialCode: 'VT-001',
-      materialName: 'Vải Cotton 100% trắng',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 15,
-      lastUnitCost: 85000,
-    },
-    {
-      materialCode: 'VT-002',
-      materialName: 'Vải Polyester blend xám',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 12,
-      lastUnitCost: 65000,
-    },
-    {
-      materialCode: 'VT-003',
-      materialName: 'Vải Pique cotton 220gsm',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 10,
-      lastUnitCost: 95000,
-    },
-    {
-      materialCode: 'VT-004',
-      materialName: 'Vải Nylon dri-fit 150gsm',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 8,
-      lastUnitCost: 110000,
-    },
-    {
-      materialCode: 'VT-005',
-      materialName: 'Vải Oxford cotton 120gsm',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 12,
-      lastUnitCost: 78000,
-    },
-    {
-      materialCode: 'VT-006',
-      materialName: 'Vải Denim 12oz twill',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 15,
-      lastUnitCost: 145000,
-    },
-    {
-      materialCode: 'VT-007',
-      materialName: 'Vải Merino wool 100%',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 10,
-      lastUnitCost: 320000,
-    },
-    {
-      materialCode: 'VT-008',
-      materialName: 'Vải Viscose 95% Elastane 5%',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 8,
-      lastUnitCost: 125000,
-    },
-    {
-      materialCode: 'VT-009',
-      materialName: 'Vải Nylon 4-way stretch',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 10,
-      lastUnitCost: 135000,
-    },
-    {
-      materialCode: 'VT-010',
-      materialName: 'Vải Cotton fleece 380gsm',
-      materialGroupId: groupMap['FUSIBLE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 12,
-      lastUnitCost: 185000,
-    },
+    { materialCode: 'FUS-BLK', materialName: 'FUSIBLE BLK', materialGroupId: groupMap['FUSIBLE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
+    { materialCode: 'FUS-WHT', materialName: 'FUSIBLE WHT', materialGroupId: groupMap['FUSIBLE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
     // TAPE
-    {
-      materialCode: 'VL-001',
-      materialName: 'Vải lót Polyester trắng',
-      materialGroupId: groupMap['TAPE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 10,
-      lastUnitCost: 35000,
-    },
-    {
-      materialCode: 'VL-002',
-      materialName: 'Vải lót satin đen',
-      materialGroupId: groupMap['TAPE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 10,
-      lastUnitCost: 45000,
-    },
-    {
-      materialCode: 'VL-003',
-      materialName: 'Lưới lót thoáng khí',
-      materialGroupId: groupMap['TAPE'].id,
-      unit: 'Mét',
-      defaultYieldPct: 12,
-      lastUnitCost: 28000,
-    },
+    { materialCode: 'TAPE-001', materialName: 'TAPE CLEAR 1/4', materialGroupId: groupMap['TAPE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
     // MAIN LABEL
-    {
-      materialCode: 'PL-001',
-      materialName: 'Chỉ may Coats 40s/2',
-      materialGroupId: groupMap['MAIN LABEL'].id,
-      unit: 'Cuộn',
-      defaultYieldPct: 5,
-      lastUnitCost: 18000,
-    },
-    {
-      materialCode: 'PL-002',
-      materialName: 'Nút nhựa 4 lỗ - 15mm',
-      materialGroupId: groupMap['MAIN LABEL'].id,
-      unit: 'Cái',
-      defaultYieldPct: 2,
-      lastUnitCost: 800,
-    },
-    // SIZE LABEL
-    {
-      materialCode: 'NB-001',
-      materialName: 'Nhãn woven thương hiệu',
-      materialGroupId: groupMap['SIZE LABEL (SIZECOO)'].id,
-      unit: 'Cái',
-      defaultYieldPct: 2,
-      lastUnitCost: 2500,
-    },
-    {
-      materialCode: 'NB-002',
-      materialName: 'Nhãn care label 4-ngôn ngữ',
-      materialGroupId: groupMap['SIZE LABEL (SIZECOO)'].id,
-      unit: 'Cái',
-      defaultYieldPct: 2,
-      lastUnitCost: 1200,
-    },
-    // POLY BAG
-    {
-      materialCode: 'NB-003',
-      materialName: 'Túi PE zip lock 30x40cm',
-      materialGroupId: groupMap['POLY BAG'].id,
-      unit: 'Cái',
-      defaultYieldPct: 3,
-      lastUnitCost: 3800,
-    },
+    { materialCode: 'ML-001', materialName: 'SL-08 SOHO APPAREL WHITE', materialGroupId: groupMap['MAIN LABEL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'ML-002', materialName: 'SL-01 SOHO APPAREL (BLK/SILVER)', materialGroupId: groupMap['MAIN LABEL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'ML-003', materialName: 'NICOLLEMNX', materialGroupId: groupMap['MAIN LABEL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // SIZE LABEL (SIZECOO)
+    { materialCode: 'SL-001', materialName: 'SL-10 SOHO WHITE', materialGroupId: groupMap['SIZE LABEL (SIZECOO)'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'SL-002', materialName: 'NICOLLESZN', materialGroupId: groupMap['SIZE LABEL (SIZECOO)'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // CARE LABEL
+    { materialCode: 'CL-001', materialName: 'SL-09', materialGroupId: groupMap['CARE LABEL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'CL-002', materialName: 'SL-04 COLOR BLK/WHT', materialGroupId: groupMap['CARE LABEL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'CL-003', materialName: 'WHITE SATIN LABEL WITH BLACK LETTERS (ENGLISH/SPANISH)', materialGroupId: groupMap['CARE LABEL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // HANGTAG
+    { materialCode: 'HT-001', materialName: 'SL-07 SOHO APPAREL PX TAG MSRP $60.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-002', materialName: 'SL-02 SOHO APPAREL PX TAG MSRP $60.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-003', materialName: 'SL-07 SOHO APPAREL PX TAG MSRP $55.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-004', materialName: 'SL-21 SOHO APPAREL NO MSRP', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-005', materialName: 'SL-07 SOHO APPAREL NO MSRP', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-006', materialName: 'SL-07 SOHO APPAREL PX TAG MSRP $30.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-007', materialName: 'SL-02 SOHO APPAREL PX TAG MSRP $30.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-008', materialName: 'SL-02 SOHO APPAREL PX TAG MSRP $35.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-009', materialName: 'SL-07 SOHO APPAREL PX TAG MSRP $48.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-010', materialName: 'SL-02 SOHO APPAREL PX TAG MSRP $48.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-011', materialName: 'SL-02 SOHO APPAREL PX TAG MSRP $55.00', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-012', materialName: 'SL-49 FLARE', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-013', materialName: 'SL-28 FLARE LEG', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-014', materialName: 'SL-31 WIDE LEG', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-015', materialName: 'SL-38 CULOTTE', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-016', materialName: 'SL-48 WIDE LEG', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-017', materialName: 'SL-45 PETITE HANGTAG', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-018', materialName: 'SL-47 CROP', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-019', materialName: 'SL-40 BURLINGTON PETITE', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HT-020', materialName: 'NICOLLE WITH RFID', materialGroupId: groupMap['HANGTAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // JOKER TAG
+    { materialCode: 'JK-001', materialName: 'SL-16 SOHO APPAREL WHITE', materialGroupId: groupMap['JOKER TAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'JK-002', materialName: 'SL-03 SOHO APPAREL', materialGroupId: groupMap['JOKER TAG'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // SWIFTACK
+    { materialCode: 'SA-001', materialName: '1" CLEAR', materialGroupId: groupMap['SWIFTACK'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'SA-002', materialName: '1" BLACK', materialGroupId: groupMap['SWIFTACK'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'SA-003', materialName: '2" CLEAR', materialGroupId: groupMap['SWIFTACK'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'SA-004', materialName: '3" CLEAR', materialGroupId: groupMap['SWIFTACK'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'SA-005', materialName: '7" CLEAR', materialGroupId: groupMap['SWIFTACK'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'SA-006', materialName: '9" CLEAR', materialGroupId: groupMap['SWIFTACK'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // HANGER
+    { materialCode: 'HG-001', materialName: '484-17', materialGroupId: groupMap['HANGER'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HG-002', materialName: '6012-12', materialGroupId: groupMap['HANGER'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'HG-003', materialName: '6212-12', materialGroupId: groupMap['HANGER'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // ĐỆM VAI
+    { materialCode: 'SP-001', materialName: 'VN497', materialGroupId: groupMap['ĐỆM VAI'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // ZIPPER
+    { materialCode: 'ZP-001', materialName: 'VN564 GUNMETAL', materialGroupId: groupMap['ZIPPER'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // ZIPPER TAPE
+    { materialCode: 'ZT-001', materialName: 'ADMIRAL', materialGroupId: groupMap['ZIPPER TAPE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
+    { materialCode: 'ZT-002', materialName: 'BLK', materialGroupId: groupMap['ZIPPER TAPE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
+    { materialCode: 'ZT-003', materialName: 'LATTE', materialGroupId: groupMap['ZIPPER TAPE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
+    { materialCode: 'ZT-004', materialName: 'BROWN', materialGroupId: groupMap['ZIPPER TAPE'].id, unit: 'Mét', defaultYieldPct: 5, lastUnitCost: 0 },
+    // ZIPPER PULL
+    { materialCode: 'ZP-P001', materialName: 'VN-133 GOLD', materialGroupId: groupMap['ZIPPER PULL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'ZP-P002', materialName: 'VN-133 SILVER', materialGroupId: groupMap['ZIPPER PULL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'ZP-P003', materialName: 'VN-060 ANTI GOLD', materialGroupId: groupMap['ZIPPER PULL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    { materialCode: 'ZP-P004', materialName: 'VN-060 GOLD', materialGroupId: groupMap['ZIPPER PULL'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
+    // BUTTON
+    { materialCode: 'BT-001', materialName: '40L P.RIM SHINY BUTTON - DTM', materialGroupId: groupMap['BUTTON'].id, unit: 'Cái', defaultYieldPct: 2, lastUnitCost: 0 },
   ];
 
   const savedMaterials: Record<string, Material> = {};

@@ -397,47 +397,35 @@ export class StylesService {
     const existingSamples = await this.sampleRepo.find({ where: { styleId: style.id } });
     const existing = existingSamples[0] ?? null;
 
-    const sampleCode = existing?.sampleCode ?? `SMP-${style.styleCode}-${Date.now()}`;
-
     if (existing) {
-      const newVersion = (existing.version || 1) + 1;
-      const snapshot = {
-        version: existing.version || 1,
-        images: existing.images || [],
-        description: existing.description || null,
-        dateTime: existing.dateTime ? existing.dateTime.toISOString() : null,
-        createdAt: existing.createdAt.toISOString(),
-        createdBy: existing.createdBy || 'system',
-      };
-      existing.description = body.description || null;
-      existing.dateTime = body.dateTime ? new Date(body.dateTime) : null;
-      existing.internalNote = body.internalNote || null;
-      existing.images = body.images || null;
-      existing.version = newVersion;
-      existing.versions = [...(existing.versions || []), snapshot];
-      existing.createdBy = actor ?? 'system';
-      const saved = await this.sampleRepo.save(existing);
+      // Tạo sample MỚI để lưu version hiện tại (giữ lại sample cũ trong lịch sử)
+      const newSample = this.sampleRepo.create({
+        sampleCode: `SMP-${style.styleCode}-${Date.now()}`,
+        sampleType: SampleType.TECHPACK,
+        styleId: style.id,
+        description: body.description || null,
+        images: body.images || null,
+        status: SampleStatus.DRAFT,
+        createdBy: actor ?? 'system',
+      });
+      const saved = await this.sampleRepo.save(newSample);
 
       await this.logActionSafe(
         styleId,
-        'SAMPLE_VERSION_CREATED',
-        `Tạo version ${newVersion} của mẫu (thay thế v${existing.version || 1})`,
+        'SAMPLE_CREATED',
+        `Tạo version mới từ sample cũ (${existing.sampleCode})`,
         actor ?? 'system',
       );
       return saved;
     }
 
     const sample = this.sampleRepo.create({
-      sampleCode,
+      sampleCode: `SMP-${style.styleCode}-${Date.now()}`,
       sampleType: SampleType.TECHPACK,
       styleId: style.id,
       description: body.description || null,
-      dateTime: body.dateTime ? new Date(body.dateTime) : null,
-      internalNote: body.internalNote || null,
       images: body.images || null,
       status: SampleStatus.DRAFT,
-      version: 1,
-      versions: null,
       createdBy: actor ?? 'system',
     });
     const saved = await this.sampleRepo.save(sample);
@@ -445,7 +433,7 @@ export class StylesService {
     await this.logActionSafe(
       styleId,
       'SAMPLE_CREATED',
-      `Tạo mẫu đầu tiên (version 1)`,
+      `Tạo mẫu đầu tiên`,
       actor ?? 'system',
     );
     return saved;
