@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
 import axios from 'axios';
+import { imageSize } from 'image-size';
 import { ProductionDoc } from './entities/production-doc.entity';
 import { ProductionDocSizeRow } from './entities/production-doc-size-row.entity';
 import { ProductionDocSection } from './entities/production-doc-section.entity';
@@ -539,64 +540,67 @@ export class ProductionDocsService {
     // ── Section 5: Thông số Full Size ─────────────────────────────────────────
     secTitle('5. THÔNG SỐ FULL SIZE:');
 
-    // Table header row
-    const hdrRow = ws.getRow(row++);
-    hdrRow.height = 18;
-    ['', 'Tên chỉ số', 'S', 'M', 'L', 'XL', 'Pattern', 'TOL+/-'].forEach(
-      (v, i) => {
-        const cell = hdrRow.getCell(i + 1);
-        cell.value = v;
-        applyStyle(cell, {
-          font: { ...TABLE_FONT, bold: true },
-          alignment: {
-            horizontal: i >= 2 ? 'center' : 'left',
-            vertical: 'middle',
-          },
-          border: MEDIUM,
-        });
-        if (i === 3) cell.fill = YELLOW_FILL;
-      },
-    );
+    const sizeImages = [...(doc.sizeRows ?? [])]
+      .filter((sr) => sr.imageUrl)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
 
-    // Data rows
-    const sizeRows = [...(doc.sizeRows ?? [])].sort(
-      (a, b) => a.orderIndex - b.orderIndex,
-    );
-    for (let rowIndex = 0; rowIndex < sizeRows.length; rowIndex++) {
-      const sr = sizeRows[rowIndex];
-      const dr = ws.getRow(row++);
-      dr.height = 16;
-      [
-        sr.orderIndex + 1,
-        sr.rowName,
-        sr.sValue ?? '',
-        sr.mValue ?? '',
-        sr.lValue ?? '',
-        sr.xlValue ?? '',
-        sr.patternValue ?? '',
-        sr.tolPlusMinus ?? '',
-      ].forEach((v, i) => {
-        const cell = dr.getCell(i + 1);
-        cell.value = v as ExcelJS.CellValue;
-        applyStyle(cell, {
-          font: TABLE_FONT,
-          alignment: {
-            horizontal: i >= 2 ? 'center' : 'left',
-            vertical: 'middle',
-            wrapText: true,
-          },
-          border: {
-            ...THIN,
-            ...(i === 0 ? { left: { style: 'medium' as const } } : {}),
-            ...(i === 7 ? { right: { style: 'medium' as const } } : {}),
-            ...(rowIndex === sizeRows.length - 1
-              ? { bottom: { style: 'medium' as const } }
-              : {}),
-          },
-        });
-        if (i === 3) cell.fill = YELLOW_FILL;
-      });
-      dr.height = 16;
+    // ExcelJS bug #650: fractional col positioning uses DEFAULT col width (8.43 chars),
+    // not actual column widths. Default = 640000 EMU = 67.2px at 96 DPI.
+    // Row height: 1 row Excel ~= 15pt = 20px at 96 DPI
+    const DEFAULT_ROW_PX = 20;
+    // Frame width fallback (8 columns with standard widths)
+    const FRAME_W_PX = [5, 36, 12, 12, 12, 12, 12, 10].reduce((s, w) => s + w * 7, 0);
+
+    if (sizeImages.length > 0) {
+      for (const sr of sizeImages) {
+        try {
+          const resp = await axios.get<ArrayBuffer>(sr.imageUrl!, {
+            responseType: 'arraybuffer',
+          });
+          const buf = Buffer.from(resp.data);
+          const dims = imageSize(buf);
+          const origW = dims.width ?? FRAME_W_PX;
+          const origH = dims.height ?? 280;
+          // Scale down to fit frame width; never upscale
+          // Cap at 80% of frame width so image always fits with padding on all sides
+          const scale = Math.min(1, (FRAME_W_PX * 0.8) / origW);
+          const scaledW = Math.round(origW * scale);
+          const scaledH = Math.round(origH * scale);
+          // Calculate rows needed to fit image height
+          const rowsNeeded = Math.ceil(scaledH / DEFAULT_ROW_PX);
+          const rowHeight = scaledH / rowsNeeded; // pt per row
+
+          const fileExt = (
+            sr.imageUrl!.split('?')[0].split('.').pop() ?? 'jpeg'
+          ).toLowerCase();
+          const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
+          const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
+
+          console.log('[IMG-DEBUG]', {
+            rowStart: row,
+            rowEnd: row + rowsNeeded - 1,
+            rowsNeeded,
+            scaledH,
+            rowHeight: rowHeight.toFixed(2),
+          });
+
+          for (let k = 0; k < rowsNeeded; k++) ws.getRow(row + k).height = rowHeight;
+          setRangeBorder(
+            row, 1, row + rowsNeeded - 1, 8,
+            { top: true, right: true, bottom: true, left: true },
+            'medium',
+          );
+          ws.addImage(imgId, {
+            tl: { col: 0, row: row - 1 } as any,
+            ext: { width: scaledW, height: scaledH },
+          } as any);
+          row += rowsNeeded;
+        } catch {
+          /* skip on fetch error */
+        }
+      }
+    } else {
+      textBlock('', 2);
     }
 
     // ── Dynamic sections (6+) ─────────────────────────────────────────────────
@@ -621,29 +625,38 @@ export class ProductionDocsService {
               imgUrl.split('?')[0].split('.').pop() ?? 'jpeg'
             ).toLowerCase();
             const imgType: 'png' | 'jpeg' = ext === 'png' ? 'png' : 'jpeg';
+            const dims2 = imageSize(buf);
+            const origW2 = dims2.width ?? FRAME_W_PX;
+            const origH2 = dims2.height ?? 280;
+            const scale2 = Math.min(1, (FRAME_W_PX * 0.8) / origW2);
+            const scaledW2 = Math.round(origW2 * scale2);
+            const scaledH2 = Math.round(origH2 * scale2);
+            const rowsNeeded2 = Math.ceil(scaledH2 / DEFAULT_ROW_PX);
+            const rowHeight2 = scaledH2 / rowsNeeded2;
             const imgId = wb.addImage({
               buffer: buf as any,
               extension: imgType,
             });
-            const IMG_H = 12;
-            mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
-            applyStyle(ws.getRow(row).getCell(1), {
-              alignment: { horizontal: 'center', vertical: 'middle' },
+
+            console.log('[IMG-DEBUG-DYNAMIC]', {
+              rowStart: row,
+              rowEnd: row + rowsNeeded2 - 1,
+              rowsNeeded: rowsNeeded2,
+              scaledH: scaledH2,
+              rowHeight: rowHeight2.toFixed(2),
             });
+
+            for (let k = 0; k < rowsNeeded2; k++) ws.getRow(row + k).height = rowHeight2;
             setRangeBorder(
-              row,
-              1,
-              row + IMG_H - 1,
-              8,
+              row, 1, row + rowsNeeded2 - 1, 8,
               { top: true, right: true, bottom: true, left: true },
               'thin',
             );
-            for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = 14;
             ws.addImage(imgId, {
               tl: { col: 0, row: row - 1 } as any,
-              br: { col: 8, row: row + IMG_H - 1 } as any,
-            });
-            row += IMG_H;
+              ext: { width: scaledW2, height: scaledH2 },
+            } as any);
+            row += rowsNeeded2;
           } catch {
             /* skip */
           }
