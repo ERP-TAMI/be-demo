@@ -350,6 +350,25 @@ export class PoLinesService {
               title: s.title,
               content: s.content,
               imageUrls: s.imageUrls,
+              imageGroups: Array.isArray(s.imageGroups)
+                ? s.imageGroups.map((group: any) => ({
+                    ...group,
+                    imageUrls: (group.imageUrls ?? []).slice(0, 2),
+                  }))
+                : s.imageUrls?.length
+                  ? Array.from(
+                      { length: Math.ceil(s.imageUrls.length / 2) },
+                      (_unused, groupIndex) => ({
+                        heading: null,
+                        headingColor: 'red',
+                        imageUrls: s.imageUrls.slice(
+                          groupIndex * 2,
+                          groupIndex * 2 + 2,
+                        ),
+                        orderIndex: groupIndex,
+                      }),
+                    )
+                  : [],
               orderIndex: s.orderIndex ?? i,
             })
           );

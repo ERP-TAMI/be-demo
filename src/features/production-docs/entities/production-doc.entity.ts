@@ -39,6 +39,15 @@ export class ProductionDoc {
   @Column({ type: 'text', nullable: true, name: 'section4_comment_khach_hang' })
   section4CommentKhachHang: string | null;
 
+  @Column({ type: 'varchar', length: 1000, nullable: true, name: 'final_doc_key' })
+  finalDocKey: string | null;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'final_doc_name' })
+  finalDocName: string | null;
+
+  @Column({ type: 'varchar', length: 1000, nullable: true, name: 'final_doc_url' })
+  finalDocUrl: string | null;
+
   @OneToMany(() => ProductionDocSizeRow, (r) => r.doc, { cascade: true })
   sizeRows: ProductionDocSizeRow[];
 
