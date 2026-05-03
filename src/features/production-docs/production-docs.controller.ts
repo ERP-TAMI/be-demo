@@ -20,7 +20,12 @@ import { SaveProductionDocDto } from './dto/save-production-doc.dto.js';
 import { UploadsService } from '../uploads/uploads.service.js';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_FINAL_FILE_SIZE = 50 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
+const ALLOWED_FINAL_MIME = [
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/octet-stream',
+];
 
 @UseGuards(JwtAuthGuard)
 @Controller('po-lines/:lineId/production-doc')
@@ -64,6 +69,32 @@ export class ProductionDocsController {
     if (!file) throw new BadRequestException('Vui lòng chọn file ảnh');
     const result = await this.uploadsService.uploadFile('production-docs', file.originalname, file.buffer, file.mimetype);
     return { url: result.fileUrl };
+  }
+
+  @Post('upload-final')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: MAX_FINAL_FILE_SIZE },
+      fileFilter: (_req, file, cb) => {
+        const isXlsx = file.originalname.toLowerCase().endsWith('.xlsx');
+        if (!isXlsx || !ALLOWED_FINAL_MIME.includes(file.mimetype)) {
+          return cb(new BadRequestException('Chỉ chấp nhận file XLSX'), false);
+        }
+        cb(null, true);
+      },
+    }),
+  )
+  async uploadFinal(
+    @Param('lineId', ParseUUIDPipe) lineId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<{ finalDocUrl: string; finalDocName: string }> {
+    if (!file) throw new BadRequestException('Vui lòng chọn file XLSX');
+    return this.service.uploadFinal(lineId, file);
+  }
+
+  @Get('final-download')
+  async getFinalDownload(@Param('lineId', ParseUUIDPipe) lineId: string) {
+    return this.service.getFinalDownload(lineId);
   }
 
   @Get('export')

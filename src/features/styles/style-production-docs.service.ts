@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
 import axios from 'axios';
+import { imageSize } from 'image-size';
 import { StyleProductionDoc, ProductionDocStatus } from './entities/style-production-doc.entity';
 import { Style } from './entities/style.entity';
 import { UpdateStyleProductionDocDto } from './dto/update-style-production-doc.dto.js';
@@ -260,21 +261,44 @@ export class StyleProductionDocsService {
       .filter(item => item.imageUrl)
       .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
 
+    // ExcelJS bug #650: fractional col uses DEFAULT col width (8.43 chars = 67.2px at 96 DPI)
+    const EXCEL_DEFAULT_COL_PX = 640000 / 914400 * 96;
+    const COL_W_PX = [5, 36, 12, 12, 12, 12, 12, 10].map((w) => w * 7);
+    const FRAME_W_PX = COL_W_PX.reduce((s, w) => s + w, 0);
+    const pxToFractCol = (px: number): number => Math.max(0, px) / EXCEL_DEFAULT_COL_PX;
+
     if (sizeImages.length > 0) {
       for (const sizeItem of sizeImages) {
         if (!sizeItem.imageUrl) continue;
         try {
           const resp = await axios.get<ArrayBuffer>(sizeItem.imageUrl, { responseType: 'arraybuffer' });
           const buf = Buffer.from(resp.data);
-          const ext = (sizeItem.imageUrl.split('?')[0].split('.').pop() ?? 'jpeg').toLowerCase();
-          const imgType: 'png' | 'jpeg' = ext === 'png' ? 'png' : 'jpeg';
+          const dims = imageSize(buf);
+          const origW = dims.width ?? FRAME_W_PX;
+          const origH = dims.height ?? 280;
+          const scale = Math.min(1, (FRAME_W_PX * 0.8) / origW);
+          const scaledW = Math.round(origW * scale);
+          const scaledH = Math.round(origH * scale);
+          const IMG_H = Math.max(6, Math.round((scaledH * 1.05) / 20));
+          const rowHeight = (scaledH * 1.05) / (IMG_H * 1.333);
+          const tlCol = pxToFractCol((FRAME_W_PX - scaledW) / 2);
+          const fileExt = (sizeItem.imageUrl.split('?')[0].split('.').pop() ?? 'jpeg').toLowerCase();
+          const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
           const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
-          const IMG_H = 15;
+
+          console.log('[IMG-DEBUG]', {
+            rowStart: row,
+            rowEnd: row + IMG_H - 1,
+            tlRow: row - 1,
+            totalRowHeightPt: IMG_H * rowHeight,
+            totalRowHeightPx: IMG_H * rowHeight * 1.333,
+            scaledH,
+          });
+
+          for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = rowHeight;
           mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
-          applyStyle(ws.getRow(row).getCell(1), { alignment: { horizontal: 'center', vertical: 'middle' } });
           setRangeBorder(row, 1, row + IMG_H - 1, 8, { top: true, right: true, bottom: true, left: true }, 'thin');
-          for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = 14;
-          ws.addImage(imgId, { tl: { col: 0, row: row - 1 } as any, br: { col: 8, row: row + IMG_H - 1 } as any });
+          ws.addImage(imgId, { tl: { col: tlCol, row: row - 1 } as any, ext: { width: scaledW, height: scaledH } });
           row += IMG_H;
         } catch { /* skip */ }
       }
@@ -296,15 +320,32 @@ export class StyleProductionDocsService {
           try {
             const resp = await axios.get<ArrayBuffer>(imgUrl, { responseType: 'arraybuffer' });
             const buf = Buffer.from(resp.data);
-            const ext = (imgUrl.split('?')[0].split('.').pop() ?? 'jpeg').toLowerCase();
-            const imgType: 'png' | 'jpeg' = ext === 'png' ? 'png' : 'jpeg';
+            const dims2 = imageSize(buf);
+            const origW2 = dims2.width ?? FRAME_W_PX;
+            const origH2 = dims2.height ?? 280;
+            const scale2 = Math.min(1, (FRAME_W_PX * 0.8) / origW2);
+            const scaledW2 = Math.round(origW2 * scale2);
+            const scaledH2 = Math.round(origH2 * scale2);
+            const IMG_H = Math.max(6, Math.round((scaledH2 * 1.05) / 20));
+            const rowHeight2 = (scaledH2 * 1.05) / (IMG_H * 1.333);
+            const tlCol2 = pxToFractCol((FRAME_W_PX - scaledW2) / 2);
+            const fileExt = (imgUrl.split('?')[0].split('.').pop() ?? 'jpeg').toLowerCase();
+            const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
             const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
-            const IMG_H = 12;
+
+            console.log('[IMG-DEBUG-DYNAMIC]', {
+              rowStart: row,
+              rowEnd: row + IMG_H - 1,
+              tlRow: row - 1,
+              totalRowHeightPt: IMG_H * rowHeight2,
+              totalRowHeightPx: IMG_H * rowHeight2 * 1.333,
+              scaledH: scaledH2,
+            });
+
+            for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = rowHeight2;
             mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
-            applyStyle(ws.getRow(row).getCell(1), { alignment: { horizontal: 'center', vertical: 'middle' } });
             setRangeBorder(row, 1, row + IMG_H - 1, 8, { top: true, right: true, bottom: true, left: true }, 'thin');
-            for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = 14;
-            ws.addImage(imgId, { tl: { col: 0, row: row - 1 } as any, br: { col: 8, row: row + IMG_H - 1 } as any });
+            ws.addImage(imgId, { tl: { col: tlCol2, row: row - 1 } as any, ext: { width: scaledW2, height: scaledH2 } });
             row += IMG_H;
           } catch { /* skip */ }
         }

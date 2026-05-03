@@ -28,6 +28,16 @@ export class ProductionDocSection {
   @Column({ type: 'simple-array', nullable: true, name: 'image_urls' })
   imageUrls: string[] | null;
 
+  @Column({ type: 'jsonb', nullable: true, name: 'image_groups' })
+  imageGroups:
+    | {
+        heading: string | null;
+        headingColor: 'red' | 'black';
+        imageUrls: string[];
+        orderIndex: number;
+      }[]
+    | null;
+
   @Column({ type: 'int', default: 0, name: 'order_index' })
   orderIndex: number;
 }
