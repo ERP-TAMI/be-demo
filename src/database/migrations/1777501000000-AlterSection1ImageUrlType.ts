@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
 
-export class AlterSection1ImageUrlType1777500000000 implements MigrationInterface {
-  name = 'AlterSection1ImageUrlType1777500000000';
+export class AlterSection1ImageUrlType1777501000000 implements MigrationInterface {
+  name = 'AlterSection1ImageUrlType1777501000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.changeColumn(

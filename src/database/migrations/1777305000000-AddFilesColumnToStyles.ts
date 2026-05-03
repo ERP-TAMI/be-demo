@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class AddFilesColumnToStyles1777278457802 implements MigrationInterface {
-    name = 'AddFilesColumnToStyles1777278457802'
+export class AddFilesColumnToStyles1777305000000 implements MigrationInterface {
+    name = 'AddFilesColumnToStyles1777305000000'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`ALTER TABLE "colors" DROP CONSTRAINT "FK_colors_style"`);
@@ -69,7 +69,6 @@ export class AddFilesColumnToStyles1777278457802 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "samples" DROP COLUMN "status"`);
         await queryRunner.query(`CREATE TYPE "public"."samples_status_enum" AS ENUM('Draft', 'In_Analysis', 'Analyzed', 'Approved')`);
         await queryRunner.query(`ALTER TABLE "samples" ADD "status" "public"."samples_status_enum" DEFAULT 'Draft'`);
-        await queryRunner.query(`ALTER TABLE "samples" ALTER COLUMN "versions" DROP DEFAULT`);
         await queryRunner.query(`ALTER TABLE "draft_boms" DROP COLUMN "status"`);
         await queryRunner.query(`CREATE TYPE "public"."draft_boms_status_enum" AS ENUM('Draft', 'Submitted', 'Approved')`);
         await queryRunner.query(`ALTER TABLE "draft_boms" ADD "status" "public"."draft_boms_status_enum" NOT NULL DEFAULT 'Draft'`);
@@ -148,7 +147,6 @@ export class AddFilesColumnToStyles1777278457802 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "draft_boms" DROP COLUMN "status"`);
         await queryRunner.query(`DROP TYPE "public"."draft_boms_status_enum"`);
         await queryRunner.query(`ALTER TABLE "draft_boms" ADD "status" character varying(50) NOT NULL DEFAULT 'Draft'`);
-        await queryRunner.query(`ALTER TABLE "samples" ALTER COLUMN "versions" SET DEFAULT '[]'`);
         await queryRunner.query(`ALTER TABLE "samples" DROP COLUMN "status"`);
         await queryRunner.query(`DROP TYPE "public"."samples_status_enum"`);
         await queryRunner.query(`ALTER TABLE "samples" ADD "status" character varying(50) NOT NULL DEFAULT 'Draft'`);

@@ -47,14 +47,14 @@ export class PoLine {
   @Column({ type: 'uuid', name: 'po_id' })
   poId: string;
 
-  /** FK → styles (đã có trong DB từ migration RefactorStyleColorMasterPo) */
+  /** FK → styles (nullable - cho phép tạo line không cần style) */
   @Column({ type: 'uuid', nullable: true, name: 'style_id' })
-  styleId: string;
+  styleId: string | null;
 
   /** Style cha — kế thừa thông số kỹ thuật, AS3B, tên, category */
   @ManyToOne(() => Style, { nullable: true, eager: false })
   @JoinColumn({ name: 'style_id' })
-  style: Style;
+  style: Style | null;
 
   @Column({ type: 'varchar', length: 100, name: 'style_code' })
   styleCode: string;

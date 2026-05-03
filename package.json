@@ -11,7 +11,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/src/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "test": "jest",
     "test:watch": "jest --watch",
@@ -25,9 +25,9 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:reset": "docker compose down -v && docker compose up -d",
-    "seed": "npm run build && node dist/database/seeds/seed-users.js",
-    "seed:all": "npm run build && node dist/database/seeds/seed-all.js",
-    "seed:stages": "npm run build && node dist/database/seeds/seed-stages.js"
+    "seed": "npm run seed:all",
+    "seed:all": "npm run build && node dist/src/database/seeds/seed-all.js",
+    "seed:stages": "npm run build && node dist/src/database/seeds/seed-stages.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1030.0",
@@ -47,6 +47,7 @@
     "class-validator": "^0.15.1",
     "cloudinary": "^2.9.0",
     "exceljs": "^4.4.0",
+    "image-size": "^2.0.2",
     "minio": "^8.0.7",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.5",

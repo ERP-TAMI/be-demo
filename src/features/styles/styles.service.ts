@@ -405,13 +405,10 @@ export class StylesService {
         version: existing.version || 1,
         images: existing.images || [],
         description: existing.description || null,
-        dateTime: existing.dateTime ? existing.dateTime.toISOString() : null,
         createdAt: existing.createdAt.toISOString(),
         createdBy: existing.createdBy || 'system',
       };
-      existing.description = body.description || null;
-      existing.dateTime = body.dateTime ? new Date(body.dateTime) : null;
-      existing.internalNote = body.internalNote || null;
+    existing.description = body.description || null;
       existing.images = body.images || null;
       existing.version = newVersion;
       existing.versions = [...(existing.versions || []), snapshot];
@@ -432,8 +429,6 @@ export class StylesService {
       sampleType: SampleType.TECHPACK,
       styleId: style.id,
       description: body.description || null,
-      dateTime: body.dateTime ? new Date(body.dateTime) : null,
-      internalNote: body.internalNote || null,
       images: body.images || null,
       status: SampleStatus.DRAFT,
       version: 1,

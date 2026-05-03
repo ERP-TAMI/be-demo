@@ -76,12 +76,6 @@ export class Sample {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'created_by' })
   createdBy: string | null;
 
-  @Column({ type: 'timestamptz', nullable: true, name: 'date_time' })
-  dateTime: Date | null;
-
-  @Column({ type: 'text', nullable: true, name: 'internal_note' })
-  internalNote: string | null;
-
   @Column({ type: 'int', nullable: true, default: 1 })
   version: number | null;
 
@@ -90,7 +84,6 @@ export class Sample {
     version: number;
     images: string[];
     description: string | null;
-    dateTime: string | null;
     createdAt: string;
     createdBy: string | null;
   }[] | null;

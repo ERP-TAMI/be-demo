@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsArray, ValidateNested, IsNumber } from 'class-validator';
+import { IsString, IsOptional, IsArray, ValidateNested, IsNumber, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SizeRowDto {
@@ -14,11 +14,20 @@ export class SizeRowDto {
   @IsNumber() orderIndex: number;
 }
 
+export class SectionImageGroupDto {
+  @IsOptional() @IsString() heading?: string;
+  @IsOptional() @IsIn(['red', 'black']) headingColor?: 'red' | 'black';
+  @IsOptional() @IsArray() @IsString({ each: true }) imageUrls?: string[];
+  @IsNumber() orderIndex: number;
+}
+
 export class SectionDto {
   @IsOptional() @IsString() id?: string;
   @IsString() title: string;
   @IsOptional() @IsString() content?: string;
   @IsOptional() @IsArray() @IsString({ each: true }) imageUrls?: string[];
+  @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => SectionImageGroupDto)
+  imageGroups?: SectionImageGroupDto[];
   @IsNumber() orderIndex: number;
 }
 
