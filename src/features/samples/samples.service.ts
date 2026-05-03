@@ -93,8 +93,6 @@ export class SamplesService {
     sample.images = dto.images || null;
     sample.status = SampleStatus.DRAFT;
     sample.createdBy = actor ?? 'system';
-    sample.version = 1;
-    sample.versions = null;
     return this.sampleRepo.save(sample);
   }
 

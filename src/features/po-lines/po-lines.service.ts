@@ -242,9 +242,9 @@ export class PoLinesService {
     dto: Partial<PoLine>,
     actor = 'system',
   ): Promise<PoLine> {
-    // ── Validate & kế thừa từ Style cha ────────────────────────────────────
-    let inheritedStyleCode = dto.styleCode;
-    let inheritedProductName = dto.productName;
+    // ── Validate & kế thừa từ Style cha (nếu có) ──────────────────────────────
+    let inheritedStyleCode = dto.styleCode || '';
+    let inheritedProductName = dto.productName || '';
     let inheritedCategory: any = dto.category;
 
     let styleEntity: Style | null = null;
@@ -253,22 +253,17 @@ export class PoLinesService {
         where: { id: dto.styleId },
       });
       const style = styleEntity;
-      if (!style) {
-        throw new BadRequestException(`Không tìm thấy Style #${dto.styleId}`);
+      if (style) {
+        // Kế thừa thông tin từ Style cha
+        inheritedStyleCode = dto.styleCode || style.styleCode;
+        inheritedProductName = dto.productName || style.styleName;
+        inheritedCategory = style.category ?? dto.category;
+        if (style.status !== StyleStatus.ACTIVE) {
+          throw new BadRequestException(
+            `Style "${style.styleCode}" chưa được Active. Chỉ có thể tạo sản phẩm từ Style đã Active.`,
+          );
+        }
       }
-      if (style.status !== StyleStatus.ACTIVE) {
-        throw new BadRequestException(
-          `Style "${style.styleCode}" chưa được Active. Chỉ có thể tạo sản phẩm từ Style đã Active.`,
-        );
-      }
-      // Kế thừa thông tin từ Style cha
-      inheritedStyleCode = dto.styleCode || style.styleCode;
-      inheritedProductName = dto.productName || style.styleName;
-      inheritedCategory = style.category ?? dto.category;
-    } else {
-      throw new BadRequestException(
-        'Bắt buộc phải chọn Style Active để tạo sản phẩm. Vui lòng chọn Style từ danh sách.',
-      );
     }
 
     try {
@@ -304,7 +299,7 @@ export class PoLinesService {
 
       // ── Kế thừa AS3B từ Style ──────────────────────────────────────────────
       const styleSteps = await this.styleAs3bRepo.find({
-        where: { styleId: dto.styleId },
+        where: { styleId: dto.styleId! },
         order: { orderIndex: 'ASC' },
       });
       if (styleSteps.length > 0) {
@@ -327,7 +322,7 @@ export class PoLinesService {
 
       // ── Kế thừa Tài liệu sản xuất từ Style ───────────────────────────────
       const styleDoc = await this.styleDocRepo.findOne({
-        where: { styleId: dto.styleId },
+        where: { styleId: dto.styleId! },
       });
       if (styleDoc) {
         const prodDoc = this.docRepo.create({
@@ -404,7 +399,7 @@ export class PoLinesService {
 
       // ── Kế thừa Mẫu từ Style ───────────────────────────────────────────────
       const styleSamples = await this.styleSampleRepo.find({
-        where: { styleId: dto.styleId },
+        where: { styleId: dto.styleId! },
         order: { createdAt: 'ASC' },
       });
       if (styleSamples && styleSamples.length > 0) {
@@ -415,36 +410,7 @@ export class PoLinesService {
         for (let i = 0; i < styleSamples.length; i++) {
           const s = styleSamples[i];
 
-          // 1. Copy previous versions if they exist
-          if (s.versions && Array.isArray(s.versions)) {
-            for (const v of s.versions) {
-              const ls = this.sampleRepo.create({
-                lineId: saved.id,
-                round: roundCounter++,
-                sampleDate: v.dateTime
-                  ? new Date(v.dateTime).toISOString().slice(0, 10)
-                  : new Date(v.createdAt).toISOString().slice(0, 10),
-                feedback: v.description || '',
-                status: LineSampleStatus.DANG_LAM,
-              });
-              const savedLs = await this.sampleRepo.save(ls);
-              savedLineSamples.push(savedLs);
-              totalSamplesCopied++;
-
-              if (v.images && Array.isArray(v.images) && v.images.length > 0) {
-                const imgsToSave = v.images.map((imgUrl) =>
-                  this.imageRepo.create({
-                    sampleId: savedLs.id,
-                    colorName: 'Ảnh mẫu từ Style',
-                    imageUrl: imgUrl,
-                  }),
-                );
-                await this.imageRepo.save(imgsToSave);
-              }
-            }
-          }
-
-          // 2. Copy current (latest) version
+          // Copy current (latest) sample
           let statusEnum = LineSampleStatus.DANG_LAM;
           if (s.status === 'Approved') statusEnum = LineSampleStatus.DA_DUYET;
           else if (s.status === 'In_Analysis')
@@ -453,9 +419,7 @@ export class PoLinesService {
           const ls = this.sampleRepo.create({
             lineId: saved.id,
             round: roundCounter++,
-            sampleDate: s.dateTime
-              ? new Date(s.dateTime).toISOString().slice(0, 10)
-              : new Date().toISOString().slice(0, 10),
+            sampleDate: new Date().toISOString().slice(0, 10),
             feedback: s.analysisResult || s.description || '',
             status: statusEnum,
           });
@@ -605,7 +569,6 @@ export class PoLinesService {
       productName: line.productName,
       colorId: line.colorId ?? null,
       colorName: line.colorName ?? null,
-      styleId: (line as any).styleId ?? null,
       poQuantity: totalQty,
       version: 1,
       status: BomStatus.DRAFT,

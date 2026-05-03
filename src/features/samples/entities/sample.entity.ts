@@ -76,18 +76,6 @@ export class Sample {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'created_by' })
   createdBy: string | null;
 
-  @Column({ type: 'int', nullable: true, default: 1 })
-  version: number | null;
-
-  @Column({ type: 'jsonb', nullable: true })
-  versions: {
-    version: number;
-    images: string[];
-    description: string | null;
-    createdAt: string;
-    createdBy: string | null;
-  }[] | null;
-
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 }
