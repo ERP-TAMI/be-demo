@@ -4,13 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Bom, BomStatus } from './entities/bom.entity';
 import { BomLine } from './entities/bom-line.entity';
 import {
   PoEventType,
   PoVersionLog,
 } from '../purchase-orders/entities/po-version-log.entity';
+import { AggregateFilterDto } from './dto/aggregate-filter.dto';
 
 @Injectable()
 export class BomsService {
@@ -21,6 +22,7 @@ export class BomsService {
     private readonly lineRepo: Repository<BomLine>,
     @InjectRepository(PoVersionLog)
     private readonly logRepo: Repository<PoVersionLog>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async findAll(filters?: { poId?: string; lineId?: string }): Promise<Bom[]> {
@@ -42,6 +44,175 @@ export class BomsService {
     });
     if (!bom) throw new NotFoundException(`BOM #${id} not found`);
     return bom;
+  }
+
+  /**
+   * Tổng hợp số lượng vật tư cần đặt từ BOM.
+   * Join: boms → bom_lines → po_lines → line_colors → line_color_sizes
+   *
+   * @returns
+   *   summary  — tổng SL mỗi vật tư (bảng gọn)
+   *   detail   — SL mỗi vật tư chia theo từng size (bảng chi tiết)
+   *   sizeLabels — danh sách size label (để render cột)
+   */
+  async aggregateMaterials(filter: AggregateFilterDto): Promise<{
+    summary: Array<{
+      materialName: string;
+      materialGroup: string;
+      unit: string;
+      totalQty: number;
+    }>;
+    detail: Array<{
+      materialName: string;
+      materialGroup: string;
+      unit: string;
+      bySize: Record<string, number>;
+      total: number;
+    }>;
+    sizeLabels: string[];
+    bomCount: number;
+  }> {
+    // ── Default statuses ──────────────────────────────────────────────
+    const statuses =
+      filter.statuses && filter.statuses.length > 0
+        ? filter.statuses
+        : [BomStatus.APPROVED, BomStatus.LOCKED];
+
+    // ── 1. Load BOMs with BOM lines ───────────────────────────────────
+    const bomQb = this.bomRepo
+      .createQueryBuilder('bom')
+      .leftJoinAndSelect('bom.bomLines', 'bl')
+      .where('bom.status IN (:...statuses)', { statuses });
+
+    if (filter.poIds && filter.poIds.length > 0) {
+      bomQb.andWhere('bom.poId IN (:...poIds)', { poIds: filter.poIds });
+    }
+    if (filter.lineIds && filter.lineIds.length > 0) {
+      bomQb.andWhere('bom.lineId IN (:...lineIds)', { lineIds: filter.lineIds });
+    }
+    if (filter.dateFrom) {
+      bomQb.andWhere('bom.createdAt >= :dateFrom', {
+        dateFrom: filter.dateFrom,
+      });
+    }
+    if (filter.dateTo) {
+      // Include all of the dateTo day
+      bomQb.andWhere('bom.createdAt < :dateTo', {
+        dateTo: new Date(
+          new Date(filter.dateTo).getTime() + 24 * 60 * 60 * 1000,
+        ).toISOString(),
+      });
+    }
+
+    const boms = await bomQb.getMany();
+    if (boms.length === 0) {
+      return { summary: [], detail: [], sizeLabels: [], bomCount: 0 };
+    }
+
+    // ── 2. Load size breakdown for each po_line ───────────────────────
+    const lineIds = [...new Set(boms.map((b) => b.lineId))];
+
+    // Raw query: line_colors + line_color_sizes
+    const sizeRows: Array<{
+      line_id: string;
+      size_label: string;
+      qty: string;
+    }> = await this.dataSource.query(
+      `
+      SELECT
+        lc.line_id,
+        lcs.size_label,
+        SUM(lcs.quantity)::int AS qty
+      FROM line_colors lc
+      JOIN line_color_sizes lcs ON lcs.color_id = lc.id
+      WHERE lc.line_id = ANY($1)
+      GROUP BY lc.line_id, lcs.size_label
+      ORDER BY lc.line_id, lcs.size_label
+      `,
+      [lineIds],
+    );
+
+    // Build: lineId → { sizeLabel: qty }
+    const lineSizeMap: Record<string, Record<string, number>> = {};
+    const lineTotalMap: Record<string, number> = {};
+    for (const row of sizeRows) {
+      if (!lineSizeMap[row.line_id]) lineSizeMap[row.line_id] = {};
+      const qty = parseInt(String(row.qty), 10);
+      lineSizeMap[row.line_id][row.size_label] = qty;
+      lineTotalMap[row.line_id] =
+        (lineTotalMap[row.line_id] ?? 0) + qty;
+    }
+
+    // ── 3. Aggregate per material ─────────────────────────────────────
+    // key = `${materialName}||${materialGroup}||${unit}`
+    const summaryMap: Record<string, number> = {};
+    const detailMap: Record<string, Record<string, number>> = {};
+    const allSizeLabels = new Set<string>();
+
+    for (const bom of boms) {
+      const poQty = Number(bom.poQuantity ?? 0);
+      const sizeBreakdown = lineSizeMap[bom.lineId] ?? {};
+      const lineTotal = lineTotalMap[bom.lineId] ?? 0;
+      const hasSizes = lineTotal > 0;
+
+      for (const bl of bom.bomLines ?? []) {
+        const consumption = Number(bl.consumptionPerUnit ?? 0);
+        const materialQtyTotal = poQty * consumption;
+
+        const key = `${bl.materialName}||${bl.materialGroup}||${bl.unit}`;
+
+        // Summary
+        summaryMap[key] = (summaryMap[key] ?? 0) + materialQtyTotal;
+
+        // Detail — distribute by size ratio
+        if (!detailMap[key]) detailMap[key] = {};
+
+        if (hasSizes) {
+          for (const [sizeLabel, sizeQty] of Object.entries(sizeBreakdown)) {
+            allSizeLabels.add(sizeLabel);
+            const ratio = sizeQty / lineTotal;
+            detailMap[key][sizeLabel] =
+              (detailMap[key][sizeLabel] ?? 0) + materialQtyTotal * ratio;
+          }
+        } else {
+          // No size breakdown available → put all in 'N/A'
+          const fallback = 'N/A';
+          allSizeLabels.add(fallback);
+          detailMap[key][fallback] =
+            (detailMap[key][fallback] ?? 0) + materialQtyTotal;
+        }
+      }
+    }
+
+    // ── 4. Build response ─────────────────────────────────────────────
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+
+    const summary = Object.entries(summaryMap).map(([key, totalQty]) => {
+      const [materialName, materialGroup, unit] = key.split('||');
+      return { materialName, materialGroup, unit, totalQty: round2(totalQty) };
+    });
+
+    const sizeLabels = [...allSizeLabels].sort();
+
+    const detail = Object.entries(detailMap).map(([key, bySize]) => {
+      const [materialName, materialGroup, unit] = key.split('||');
+      const roundedBySize: Record<string, number> = {};
+      let total = 0;
+      for (const sl of sizeLabels) {
+        const v = round2(bySize[sl] ?? 0);
+        roundedBySize[sl] = v;
+        total += v;
+      }
+      return {
+        materialName,
+        materialGroup,
+        unit,
+        bySize: roundedBySize,
+        total: round2(total),
+      };
+    });
+
+    return { summary, detail, sizeLabels, bomCount: boms.length };
   }
 
   private static readonly WASTAGE = 1.03;

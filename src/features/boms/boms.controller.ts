@@ -16,6 +16,7 @@ import { BomStatus } from './entities/bom.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { Bom } from './entities/bom.entity';
 import { BomLine } from './entities/bom-line.entity';
+import { AggregateFilterDto } from './dto/aggregate-filter.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('boms')
@@ -25,6 +26,33 @@ export class BomsController {
   @Get()
   findAll(@Query('poId') poId?: string, @Query('lineId') lineId?: string) {
     return this.service.findAll({ poId, lineId });
+  }
+
+  /**
+   * Tổng hợp vật tư cần đặt từ BOM.
+   * Query params:
+   *   poIds      - cách nhau bằng dấu phẩy (vd: ?poIds=uuid1,uuid2)
+   *   lineIds    - cách nhau bằng dấu phẩy
+   *   statuses   - cách nhau bằng dấu phẩy (mặc định: Approved,Locked)
+   *   dateFrom   - ISO date string (theo bom.createdAt)
+   *   dateTo     - ISO date string
+   */
+  @Get('aggregate')
+  aggregate(
+    @Query('poIds') poIds?: string,
+    @Query('lineIds') lineIds?: string,
+    @Query('statuses') statuses?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+  ) {
+    const filter: AggregateFilterDto = {
+      poIds: poIds ? poIds.split(',').filter(Boolean) : undefined,
+      lineIds: lineIds ? lineIds.split(',').filter(Boolean) : undefined,
+      statuses: statuses ? statuses.split(',').filter(Boolean) : undefined,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
+    };
+    return this.service.aggregateMaterials(filter);
   }
 
   @Get(':id')
