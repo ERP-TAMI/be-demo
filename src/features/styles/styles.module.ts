@@ -18,11 +18,23 @@ import { UploadsModule } from '../uploads/uploads.module.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Style, StyleAs3bStep, StyleVersionLog, StyleProductionDoc, Color, Sample, DocFile]),
+    TypeOrmModule.forFeature([
+      Style,
+      StyleAs3bStep,
+      StyleVersionLog,
+      StyleProductionDoc,
+      Color,
+      Sample,
+      DocFile,
+    ]),
     MulterModule.register({ dest: './uploads' }),
     UploadsModule,
   ],
-  controllers: [StylesController, StyleAs3bController, StyleProductionDocsController],
+  controllers: [
+    StylesController,
+    StyleAs3bController,
+    StyleProductionDocsController,
+  ],
   providers: [StylesService, StyleAs3bService, StyleProductionDocsService],
   exports: [StylesService, StyleAs3bService, StyleProductionDocsService],
 })

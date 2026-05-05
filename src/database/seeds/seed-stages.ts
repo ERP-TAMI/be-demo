@@ -1,6 +1,9 @@
 import { DataSource } from 'typeorm';
 import { config } from 'dotenv';
-import { Stage, StageStatus } from '../../features/masters/entities/stage.entity';
+import {
+  Stage,
+  StageStatus,
+} from '../../features/masters/entities/stage.entity';
 
 config(); // Load .env file
 
@@ -16,54 +19,288 @@ const AppDataSource = new DataSource({
 });
 
 const stagesData = [
-  // ─── Cutting & Preparation ────────────────────────────────────────────
-  { stageCode: 'GD-CAT', stageName: 'Cắt vải', description: 'Cắt theo rập', smv: 0.083 },
-  { stageCode: 'GD-KD-CAT', stageName: 'Kéo điện cắt', description: 'Cắt bằng máy kéo điện', smv: 0.067 },
-  { stageCode: 'GD-CAT-LASER', stageName: 'Cắt laser', description: 'Cắt bằng máy laser', smv: 0.05 },
-  { stageCode: 'GD-DAN-VAI', stageName: 'Dán vải', description: 'Dán lớp lót, lưới', smv: 0.1 },
-
-  // ─── Sewing - Upper Body ───────────────────────────────────────────────
-  { stageCode: 'GD-RAP-VAI', stageName: 'Ráp vai', description: 'Ráp vai trước - sau', smv: 0.133 },
-  { stageCode: 'GD-GAN-TAY', stageName: 'Gắn tay áo', description: 'Ráp tay vào thân', smv: 0.167 },
-  { stageCode: 'GD-MAY-CO', stageName: 'May cổ', description: 'Gắn cổ áo', smv: 0.2 },
-  { stageCode: 'GD-MAY-CO-POLO', stageName: 'May cổ polo', description: 'Gắn cổ polo', smv: 0.167 },
-  { stageCode: 'GD-VIEN-CO', stageName: 'Viền cổ', description: 'Viền cổ áo', smv: 0.067 },
-  { stageCode: 'GD-VIEN-LO-TAY', stageName: 'Viền lỗ tay', description: 'Viền 2 lỗ tay áo', smv: 0.067 },
-  { stageCode: 'GD-MAY-THAN', stageName: 'May thân', description: 'May thân áo/váy', smv: 0.333 },
-  { stageCode: 'GD-MAY-THAN-T', stageName: 'May thân trước', description: 'May các chi tiết thân trước', smv: 0.25 },
-  { stageCode: 'GD-MAY-THAN-S', stageName: 'May thân sau', description: 'May nối thân sau', smv: 0.25 },
-  { stageCode: 'GD-LON-MONG', stageName: 'Lộn mông', description: 'Lộn phần mông quần', smv: 0.117 },
-  { stageCode: 'GD-MAY-FERMATURE', stageName: 'May fermeture', description: 'Gắn khóa kéo', smv: 0.133 },
-
-  // ─── Sewing - Lower Body ───────────────────────────────────────────────
-  { stageCode: 'GD-MAY-DUNG', stageName: 'May đũng', description: 'May đũng quần trước - sau', smv: 0.167 },
-  { stageCode: 'GD-RAP-ONG', stageName: 'Ráp ống quần', description: 'Ráp 2 ống quần', smv: 0.133 },
-  { stageCode: 'GD-LON-ONG', stageName: 'Lộn ống quần', description: 'Viền gấu ống', smv: 0.117 },
-  { stageCode: 'GD-MAY-CAP', stageName: 'May cạp', description: 'May cạp quần', smv: 0.1 },
-
-  // ─── Accessories ──────────────────────────────────────────────────────
-  { stageCode: 'GD-DINH-NUT', stageName: 'Đính nút', description: 'Đính nút', smv: 0.117 },
-  { stageCode: 'GD-DINH-MOC', stageName: 'Đính móc/khóa', description: 'Gắn móc + khóa kéo', smv: 0.083 },
-  { stageCode: 'GD-GAN-VIEN', stageName: 'Gắn viền', description: 'Gắn viền trang trí', smv: 0.1 },
-  { stageCode: 'GD-MAY-VIEN', stageName: 'May viền', description: 'May viền đường may', smv: 0.083 },
-  { stageCode: 'GD-DAN-KEO', stageName: 'Dán keo', description: 'Dán keo nhiệt', smv: 0.05 },
-
-  // ─── Knitting ─────────────────────────────────────────────────────────
-  { stageCode: 'GD-DET-THAN', stageName: 'Dệt thân áo', description: 'Dệt theo chương trình', smv: 0.75 },
-  { stageCode: 'GD-DET-TAY', stageName: 'Dệt tay áo', description: 'Dệt 2 tay áo', smv: 0.5 },
-  { stageCode: 'GD-DET-CO', stageName: 'Dệt cổ lọ', description: 'Dệt phần cổ lọ', smv: 0.25 },
-  { stageCode: 'GD-RAP-AO', stageName: 'Ráp áo', description: 'Nối các phần lại với nhau', smv: 0.333 },
-
-  // ─── Quality Control ──────────────────────────────────────────────────
-  { stageCode: 'GD-KCS-NB', stageName: 'KCS nội bộ', description: 'Kiểm tra trước đóng gói', smv: 0.05 },
-  { stageCode: 'GD-KCS-TC', stageName: 'KCS thành phẩm', description: 'Kiểm tra chất lượng cuối', smv: 0.067 },
-  { stageCode: 'GD-UT-MAU', stageName: 'Ủ thử mẫu', description: 'Ủi là, kiểm tra form', smv: 0.083 },
-
-  // ─── Finishing ───────────────────────────────────────────────────────
-  { stageCode: 'GD-IN-LUNG', stageName: 'In logo lưng', description: 'In nhiệt logo thương hiệu', smv: 0.05 },
-  { stageCode: 'GD-DONG-GOI', stageName: 'Đóng gói', description: 'Gấp, túi PE, thùng carton', smv: 0.067 },
-  { stageCode: 'GD-GAN-TAG', stageName: 'Gắn tag', description: 'Gắn tag, nhãn mác', smv: 0.033 },
-  { stageCode: 'GD-KHO-VAI', stageName: 'Khử запах', description: 'Khử mùi, ủi hơi nước', smv: 0.05 },
+  {
+    stageCode: 'GD-KANSAI-LAI',
+    stageName: 'Kansai lai',
+    description: 'Kansai lai',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-TP',
+    stageName: 'Ủi TP',
+    description: 'Ủi TP',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-TP-PHA-HOI',
+    stageName: 'Ủi TP + phà hơi',
+    description: 'Ủi TP + phà hơi',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-TP-UI-LY-SONG',
+    stageName: 'Ủi TP + ủi ly + sóng',
+    description: 'Ủi TP + ủi ly + sóng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-GAP-XEP',
+    stageName: 'Gấp xếp',
+    description: 'Gấp xếp',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-BAN-DAN-DAY-NIT',
+    stageName: 'Bắn đạn dây nịt',
+    description: 'Bắn đạn dây nịt',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-XO-THAT-DAY-NIT',
+    stageName: 'Xỏ thắt dây nịt',
+    description: 'Xỏ thắt dây nịt',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-LUOT-NHAN-XUONG-CAT',
+    stageName: 'Lượt nhãn – XƯỞNG CẮT',
+    description: 'Lượt nhãn – XƯỞNG CẮT',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-GAN-NHAN',
+    stageName: 'Gắn nhãn',
+    description: 'Gắn nhãn',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-GAP-LUNG-LOT-X2',
+    stageName: 'Ủi CT – Ủi gấp lưng lót x2',
+    description: 'Ủi CT – Ủi gấp lưng lót x2',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-THAN',
+    stageName: 'Ủi CT – Ủi keo thân',
+    description: 'Ủi CT – Ủi keo thân',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-THAN-SAU',
+    stageName: 'Ủi CT – Ủi keo thân sau',
+    description: 'Ủi CT – Ủi keo thân sau',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-TUI',
+    stageName: 'Ủi CT – Ủi keo túi',
+    description: 'Ủi CT – Ủi keo túi',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-NEP-TUI',
+    stageName: 'Ủi CT – Ủi keo nẹp túi',
+    description: 'Ủi CT – Ủi keo nẹp túi',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-EP-KEO-NEP-TUI-SAU',
+    stageName: 'Ủi CT – Ép keo nẹp túi sau',
+    description: 'Ủi CT – Ép keo nẹp túi sau',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-LUNG',
+    stageName: 'Ủi CT – Ủi keo lưng',
+    description: 'Ủi CT – Ủi keo lưng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-TS',
+    stageName: 'Ủi CT – Ủi keo TS',
+    description: 'Ủi CT – Ủi keo TS',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-NTS',
+    stageName: 'Ủi CT – Ủi keo NTS',
+    description: 'Ủi CT – Ủi keo NTS',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-TT',
+    stageName: 'Ủi CT – Ủi keo TT',
+    description: 'Ủi CT – Ủi keo TT',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-KEO-PAGET',
+    stageName: 'Ủi CT – Ủi keo paget',
+    description: 'Ủi CT – Ủi keo paget',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-CT-UI-GAP-TUI',
+    stageName: 'Ủi CT – Ủi gấp túi',
+    description: 'Ủi CT – Ủi gấp túi',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-CAT-DAY-PATSAN-X1-X2-X5',
+    stageName: 'Chạy cắt dây patsan (X1, X2, X5)',
+    description: 'Chạy cắt dây patsan (X1, X2, X5)',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-CAT-PASSANT',
+    stageName: 'Chạy + cắt passant',
+    description: 'Chạy + cắt passant',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-KANSAI-LUNG-CAT',
+    stageName: 'Chạy kansai lưng + cắt',
+    description: 'Chạy kansai lưng + cắt',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-DAY-VIEN-LUNG',
+    stageName: 'Chạy dây viền lưng',
+    description: 'Chạy dây viền lưng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-DAY-VIEN',
+    stageName: 'Chạy dây viền',
+    description: 'Chạy dây viền',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-DAY-VIEN-DO-CAT-DAY-VIEN',
+    stageName: 'Chạy dây viền + đo cắt dây viền',
+    description: 'Chạy dây viền + đo cắt dây viền',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-DAY-VIEN',
+    stageName: 'Ủi dây viền',
+    description: 'Ủi dây viền',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-DAY-VIEN-CAT',
+    stageName: 'Ủi dây viền + cắt',
+    description: 'Ủi dây viền + cắt',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-MAY-LON-DAU-LUNG',
+    stageName: 'May lộn đầu lưng',
+    description: 'May lộn đầu lưng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-MAY-LON-DAY-KHOEN',
+    stageName: 'May lộn dây khoen',
+    description: 'May lộn dây khoen',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-VS-LON-DAY-KHOEN',
+    stageName: 'VS lộn dây khoen',
+    description: 'VS lộn dây khoen',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-VS-MAY-LON-DAY-KHOEN-LUNG',
+    stageName: 'VS may lộn dây khoen lưng',
+    description: 'VS may lộn dây khoen lưng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-DAY-KHOEN',
+    stageName: 'Ủi dây khoen',
+    description: 'Ủi dây khoen',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-DAY-KHOEN-LUNG',
+    stageName: 'Ủi dây khoen lưng',
+    description: 'Ủi dây khoen lưng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-DINH-LUNG-VAO-THUN',
+    stageName: 'Đính lưng vào thun',
+    description: 'Đính lưng vào thun',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-THUA-KHUY-DAU-LUNG',
+    stageName: 'Thùa khuy đầu lưng',
+    description: 'Thùa khuy đầu lưng',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-DUC-LO',
+    stageName: 'Đục lỗ',
+    description: 'Đục lỗ',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-LD-NUT',
+    stageName: 'LD nút (làm dấu nút)',
+    description: 'LD nút (làm dấu nút)',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-DONG-NUT-X1-X2-NUT-PAT',
+    stageName: 'Đóng nút (X1, X2, nút pat)',
+    description: 'Đóng nút (X1, X2, nút pat)',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-KEO-THAN-TUI',
+    stageName: 'Ủi keo thân túi',
+    description: 'Ủi keo thân túi',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-UI-NEP-TUI',
+    stageName: 'Ủi nẹp túi',
+    description: 'Ủi nẹp túi',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-XO-THAT-DAY-EO',
+    stageName: 'Xỏ thắt dây eo',
+    description: 'Xỏ thắt dây eo',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-BAN-DAN-DAY-EO',
+    stageName: 'Bắn đạn dây eo',
+    description: 'Bắn đạn dây eo',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-CHAY-VIEN-DAY-EO',
+    stageName: 'Chạy viền dây eo',
+    description: 'Chạy viền dây eo',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-LUON-DAY-QUA-CHUONG',
+    stageName: 'Luồn dây qua chuông',
+    description: 'Luồn dây qua chuông',
+    ssv: 10,
+  },
+  {
+    stageCode: 'GD-BE-DINH-DAU-DAY',
+    stageName: 'Bẻ đính đầu dây',
+    description: 'Bẻ đính đầu dây',
+    ssv: 10,
+  },
 ];
 
 async function seedStages() {
@@ -79,7 +316,9 @@ async function seedStages() {
       where: { stageCode: s.stageCode },
     });
     if (!exists) {
-      await stageRepo.save(stageRepo.create({ ...s, status: StageStatus.ACTIVE }));
+      await stageRepo.save(
+        stageRepo.create({ ...s, status: StageStatus.ACTIVE }),
+      );
       created++;
     } else {
       skipped++;

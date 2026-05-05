@@ -37,10 +37,20 @@ export class ProductionDocSizeRow {
   @Column({ type: 'varchar', length: 50, nullable: true, name: 'xl_value' })
   xlValue: string | null;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'pattern_value' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'pattern_value',
+  })
   patternValue: string | null;
 
-  @Column({ type: 'varchar', length: 50, nullable: true, name: 'tol_plus_minus' })
+  @Column({
+    type: 'varchar',
+    length: 50,
+    nullable: true,
+    name: 'tol_plus_minus',
+  })
   tolPlusMinus: string | null;
 
   @Column({ type: 'int', default: 0, name: 'order_index' })

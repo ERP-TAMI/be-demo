@@ -19,13 +19,28 @@ export class MasterPo {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true, name: 'master_po_code' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    unique: true,
+    name: 'master_po_code',
+  })
   masterPoCode: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'container_name' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'container_name',
+  })
   containerName: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true, name: 'shipping_month' })
+  @Column({
+    type: 'varchar',
+    length: 20,
+    nullable: true,
+    name: 'shipping_month',
+  })
   shippingMonth: string;
 
   @Column({ type: 'timestamptz', nullable: true, name: 'estimated_ship_date' })

@@ -45,10 +45,7 @@ export class ColorsController {
   }
 
   @Patch(':id')
-  update(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: UpdateColorDto,
-  ) {
+  update(@Param('id', ParseUUIDPipe) id: string, @Body() body: UpdateColorDto) {
     return this.service.update(id, body);
   }
 

@@ -61,28 +61,54 @@ export class UploadService {
     );
   }
 
-  async uploadImage(buffer: Buffer, originalName: string, folder: string): Promise<string> {
+  async uploadImage(
+    buffer: Buffer,
+    originalName: string,
+    folder: string,
+  ): Promise<string> {
     if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
-      throw new BadRequestException('File ảnh không hợp lệ hoặc không đọc được dữ liệu.');
+      throw new BadRequestException(
+        'File ảnh không hợp lệ hoặc không đọc được dữ liệu.',
+      );
     }
     this.assertCloudinaryConfigured();
     return new Promise((resolve, reject) => {
       try {
         const uploadStream = cloudinary.uploader.upload_stream(
-          { folder, resource_type: 'image', quality: 'auto', fetch_format: 'auto' } as any,
-          (error: UploadApiErrorResponse | undefined, result: UploadApiResponse | undefined) => {
+          {
+            folder,
+            resource_type: 'image',
+            quality: 'auto',
+            fetch_format: 'auto',
+          } as any,
+          (
+            error: UploadApiErrorResponse | undefined,
+            result: UploadApiResponse | undefined,
+          ) => {
             if (error || !result?.secure_url) {
-              const reason = error?.message ?? 'Không nhận được secure_url từ Cloudinary.';
-              this.logger.error(`Cloudinary upload failed for ${originalName}: ${reason}`);
-              return reject(new InternalServerErrorException(`Tải ảnh lên Cloudinary thất bại: ${reason}`));
+              const reason =
+                error?.message ?? 'Không nhận được secure_url từ Cloudinary.';
+              this.logger.error(
+                `Cloudinary upload failed for ${originalName}: ${reason}`,
+              );
+              return reject(
+                new InternalServerErrorException(
+                  `Tải ảnh lên Cloudinary thất bại: ${reason}`,
+                ),
+              );
             }
             resolve(result.secure_url);
           },
         );
         Readable.from(buffer).pipe(uploadStream);
       } catch (error) {
-        const reason = error instanceof Error ? error.message : 'Lỗi không xác định.';
-        reject(new InternalServerErrorException(`Tải ảnh lên Cloudinary thất bại: ${reason}`));
+        const reason =
+          error instanceof Error ? error.message : 'Lỗi không xác định.';
+        reject(
+          new InternalServerErrorException(
+            `Tải ảnh lên Cloudinary thất bại: ${reason}`,
+          ),
+        );
       }
     });
   }

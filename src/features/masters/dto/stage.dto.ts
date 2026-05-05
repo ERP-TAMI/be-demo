@@ -27,7 +27,7 @@ export class CreateStageDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  smv?: number;
+  ssv?: number;
 
   @IsOptional()
   @IsEnum(StageStatus)
@@ -47,7 +47,7 @@ export class UpdateStageDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  smv?: number;
+  ssv?: number;
 
   @IsOptional()
   @IsEnum(StageStatus)

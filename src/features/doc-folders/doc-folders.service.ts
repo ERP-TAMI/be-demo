@@ -1,7 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocFolder } from './entities/doc-folder.entity';
@@ -55,14 +52,24 @@ export class DocFoldersService {
   /** Thêm file metadata vào thư mục */
   async addFile(
     folderId: string,
-    data: { name: string; type: string; size?: string; url?: string; fileKey?: string },
+    data: {
+      name: string;
+      type: string;
+      size?: string;
+      url?: string;
+      fileKey?: string;
+    },
   ) {
     await this.findOne(folderId); // validate exists
     const file = this.fileRepo.create({ ...data, folderId });
     return this.fileRepo.save(file);
   }
 
-  async removeFile(folderId: string, fileId: string, uploadsService?: UploadsService) {
+  async removeFile(
+    folderId: string,
+    fileId: string,
+    uploadsService?: UploadsService,
+  ) {
     const file = await this.fileRepo.findOne({
       where: { id: fileId, folderId },
     });

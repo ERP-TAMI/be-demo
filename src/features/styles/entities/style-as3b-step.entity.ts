@@ -40,10 +40,22 @@ export class StyleAs3bStep {
   timePerPc: number;
 
   @Column({ type: 'decimal', precision: 8, scale: 3, default: 0 })
-  smv: number;
+  ssv: number;
 
   @Column({ type: 'int', default: 0, name: 'order_index' })
   orderIndex: number;
+
+  @Column({ type: 'uuid', nullable: true, name: 'parent_row_id' })
+  parentRowId: string;
+
+  @Column({ type: 'boolean', default: false, name: 'is_group' })
+  isGroup: boolean;
+
+  @Column({ type: 'uuid', nullable: true, name: 'group_id' })
+  groupId: string;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'group_items' })
+  groupItems: any;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;

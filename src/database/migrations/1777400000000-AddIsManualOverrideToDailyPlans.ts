@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddIsManualOverrideToDailyPlans1777400000000
-  implements MigrationInterface
-{
+export class AddIsManualOverrideToDailyPlans1777400000000 implements MigrationInterface {
   async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       ALTER TABLE daily_plans

@@ -32,7 +32,7 @@ export class StyleAs3bController {
       stepName: string;
       description?: string;
       timePerPc: number;
-      smv: number;
+      ssv: number;
       orderIndex?: number;
     },
   ) {
@@ -48,7 +48,7 @@ export class StyleAs3bController {
       stepName: string;
       description?: string;
       timePerPc: number;
-      smv: number;
+      ssv: number;
       orderIndex: number;
     }>,
   ) {
@@ -65,7 +65,7 @@ export class StyleAs3bController {
       stepName?: string;
       description?: string;
       timePerPc?: number;
-      smv?: number;
+      ssv?: number;
       orderIndex?: number;
     },
   ) {

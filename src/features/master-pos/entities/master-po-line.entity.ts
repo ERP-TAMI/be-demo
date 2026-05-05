@@ -14,7 +14,9 @@ export class MasterPoLine {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => MasterPo, (masterPo) => masterPo.linkedLines, { onDelete: 'CASCADE' })
+  @ManyToOne(() => MasterPo, (masterPo) => masterPo.linkedLines, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'master_po_id' })
   masterPo: MasterPo;
 

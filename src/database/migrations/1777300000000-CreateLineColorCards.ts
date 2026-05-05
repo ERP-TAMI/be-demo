@@ -42,8 +42,12 @@ export class CreateLineColorCards1777300000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_line_color_cards_line_color_id"`);
-    await queryRunner.query(`ALTER TABLE "line_color_cards" DROP CONSTRAINT IF EXISTS "FK_line_color_cards_line_color"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_line_color_cards_line_color_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "line_color_cards" DROP CONSTRAINT IF EXISTS "FK_line_color_cards_line_color"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "line_color_cards"`);
   }
 }

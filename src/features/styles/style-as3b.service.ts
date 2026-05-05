@@ -38,7 +38,7 @@ export class StyleAs3bService {
       stepName: string;
       description?: string;
       timePerPc: number;
-      smv: number;
+      ssv: number;
       orderIndex?: number;
     },
   ): Promise<StyleAs3bStep> {
@@ -52,12 +52,17 @@ export class StyleAs3bService {
   async createMany(
     styleId: string,
     steps: Array<{
+      id?: string;
       stageId?: string;
       stepName: string;
       description?: string;
       timePerPc: number;
-      smv: number;
+      ssv: number;
       orderIndex: number;
+      parentRowId?: string;
+      isGroup?: boolean;
+      groupId?: string;
+      groupItems?: any;
     }>,
   ): Promise<StyleAs3bStep[]> {
     try {
@@ -91,7 +96,7 @@ export class StyleAs3bService {
       stepName?: string;
       description?: string;
       timePerPc?: number;
-      smv?: number;
+      ssv?: number;
       orderIndex?: number;
     },
   ): Promise<StyleAs3bStep> {
@@ -115,7 +120,10 @@ export class StyleAs3bService {
     await this.as3bRepo.delete({ styleId });
   }
 
-  async reorder(styleId: string, orderedIds: string[]): Promise<StyleAs3bStep[]> {
+  async reorder(
+    styleId: string,
+    orderedIds: string[],
+  ): Promise<StyleAs3bStep[]> {
     const updates = orderedIds.map((id, index) =>
       this.as3bRepo.update(id, { orderIndex: index }),
     );
@@ -127,8 +135,14 @@ export class StyleAs3bService {
     if (!(error instanceof QueryFailedError)) {
       return false;
     }
-    const driverError = (error as QueryFailedError & { driverError?: { code?: string; message?: string } }).driverError;
+    const driverError = (
+      error as QueryFailedError & {
+        driverError?: { code?: string; message?: string };
+      }
+    ).driverError;
     const message = driverError?.message ?? error.message ?? '';
-    return driverError?.code === '42P01' && message.includes('style_as3b_steps');
+    return (
+      driverError?.code === '42P01' && message.includes('style_as3b_steps')
+    );
   }
 }

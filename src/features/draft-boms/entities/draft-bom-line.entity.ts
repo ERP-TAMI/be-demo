@@ -14,7 +14,9 @@ export class DraftBomLine {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => DraftBom, (draftBom) => draftBom.lines, { onDelete: 'CASCADE' })
+  @ManyToOne(() => DraftBom, (draftBom) => draftBom.lines, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'draft_bom_id' })
   draftBom: DraftBom;
 
@@ -31,7 +33,12 @@ export class DraftBomLine {
   @Column({ type: 'varchar', length: 255, name: 'material_name' })
   materialName: string;
 
-  @Column({ type: 'varchar', length: 100, nullable: true, name: 'material_group' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    nullable: true,
+    name: 'material_group',
+  })
   materialGroup: string;
 
   @Column({ type: 'varchar', length: 50, nullable: true })

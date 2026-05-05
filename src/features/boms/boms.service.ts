@@ -88,7 +88,9 @@ export class BomsService {
       bomQb.andWhere('bom.poId IN (:...poIds)', { poIds: filter.poIds });
     }
     if (filter.lineIds && filter.lineIds.length > 0) {
-      bomQb.andWhere('bom.lineId IN (:...lineIds)', { lineIds: filter.lineIds });
+      bomQb.andWhere('bom.lineId IN (:...lineIds)', {
+        lineIds: filter.lineIds,
+      });
     }
     if (filter.dateFrom) {
       bomQb.andWhere('bom.createdAt >= :dateFrom', {
@@ -139,8 +141,7 @@ export class BomsService {
       if (!lineSizeMap[row.line_id]) lineSizeMap[row.line_id] = {};
       const qty = parseInt(String(row.qty), 10);
       lineSizeMap[row.line_id][row.size_label] = qty;
-      lineTotalMap[row.line_id] =
-        (lineTotalMap[row.line_id] ?? 0) + qty;
+      lineTotalMap[row.line_id] = (lineTotalMap[row.line_id] ?? 0) + qty;
     }
 
     // ── 3. Aggregate per material ─────────────────────────────────────
@@ -323,13 +324,16 @@ export class BomsService {
     // → Wait_Price (KT nhập đơn giá)
     // → Wait_SA_Approve (SA duyệt final)
     const validTransitions: Record<BomStatus, BomStatus[]> = {
-      [BomStatus.DRAFT]:           [BomStatus.WAIT_RD],
-      [BomStatus.WAIT_RD]:         [BomStatus.WAIT_TP_APPROVE, BomStatus.DRAFT],
+      [BomStatus.DRAFT]: [BomStatus.WAIT_RD],
+      [BomStatus.WAIT_RD]: [BomStatus.WAIT_TP_APPROVE, BomStatus.DRAFT],
       [BomStatus.WAIT_TP_APPROVE]: [BomStatus.WAIT_PRICE, BomStatus.WAIT_RD],
-      [BomStatus.WAIT_PRICE]:      [BomStatus.WAIT_SA_APPROVE, BomStatus.WAIT_TP_APPROVE],
+      [BomStatus.WAIT_PRICE]: [
+        BomStatus.WAIT_SA_APPROVE,
+        BomStatus.WAIT_TP_APPROVE,
+      ],
       [BomStatus.WAIT_SA_APPROVE]: [BomStatus.APPROVED, BomStatus.WAIT_PRICE],
-      [BomStatus.APPROVED]:        [BomStatus.LOCKED],
-      [BomStatus.LOCKED]:          [],
+      [BomStatus.APPROVED]: [BomStatus.LOCKED],
+      [BomStatus.LOCKED]: [],
     };
 
     if (!validTransitions[bom.status].includes(status)) {

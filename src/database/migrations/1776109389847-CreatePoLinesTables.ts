@@ -17,7 +17,7 @@ export class CreatePoLinesTables1776109389847 implements MigrationInterface {
       `CREATE TABLE "line_files" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "line_id" uuid NOT NULL, "file_name" character varying(500) NOT NULL, "label" "public"."line_files_label_enum" NOT NULL DEFAULT 'Tài liệu khác', "version" integer NOT NULL DEFAULT '1', "file_group_id" uuid, "file_url" character varying(1000) NOT NULL, "uploaded_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(), CONSTRAINT "PK_c5411fee06b66ace298b9e11ab4" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
-      `CREATE TABLE "line_as3b_steps" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "line_id" uuid NOT NULL, "stage_id" uuid, "step_name" character varying(255) NOT NULL, "description" text, "time_per_pc" numeric(8,3) NOT NULL DEFAULT '0', "smv" numeric(8,3) NOT NULL DEFAULT '0', "order_index" integer NOT NULL DEFAULT '0', CONSTRAINT "PK_e7e679d3b70ffff38c279150b92" PRIMARY KEY ("id"))`,
+      `CREATE TABLE "line_as3b_steps" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "line_id" uuid NOT NULL, "stage_id" uuid, "step_name" character varying(255) NOT NULL, "description" text, "time_per_pc" numeric(8,3) NOT NULL DEFAULT '0', "ssv" numeric(8,3) NOT NULL DEFAULT '0', "order_index" integer NOT NULL DEFAULT '0', CONSTRAINT "PK_e7e679d3b70ffff38c279150b92" PRIMARY KEY ("id"))`,
     );
     await queryRunner.query(
       `CREATE TYPE "public"."po_lines_category_enum" AS ENUM('Shirt', 'Pants', 'Jacket', 'Polo', 'Shorts', 'Dress', 'Skirt')`,

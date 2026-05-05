@@ -4,20 +4,22 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { StageGroup } from './stage-group.entity';
 
-export enum StageStatus {
-  ACTIVE = 'Active',
-  INACTIVE = 'Inactive',
-}
-
-@Entity('stages')
-export class Stage {
+@Entity('stage_group_items')
+export class StageGroupItem {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 50, unique: true, name: 'stage_code' })
-  stageCode: string;
+  @Column({ type: 'uuid', name: 'group_id' })
+  groupId: string;
+
+  @ManyToOne(() => StageGroup, (group) => group.items, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'group_id' })
+  group: StageGroup;
 
   @Column({ type: 'varchar', length: 255, name: 'stage_name' })
   stageName: string;
@@ -25,15 +27,11 @@ export class Stage {
   @Column({ type: 'text', nullable: true })
   description: string;
 
-  @Column({ type: 'decimal', precision: 8, scale: 3, default: 0 })
+  @Column({ type: 'decimal', precision: 8, scale: 3, default: 10 })
   ssv: number; // Standard Second Value
 
-  @Column({
-    type: 'enum',
-    enum: StageStatus,
-    default: StageStatus.ACTIVE,
-  })
-  status: StageStatus;
+  @Column({ type: 'int', name: 'order_index', default: 0 })
+  orderIndex: number;
 
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;

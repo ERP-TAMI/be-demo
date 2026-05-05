@@ -6,10 +6,13 @@ import { UserRole } from '../user/entities/user.entity';
 
 function repo<T>(items: T[]) {
   return {
-    findOne: jest.fn(async ({ where }: { where: Partial<T> }) =>
-      items.find((item) =>
-        Object.entries(where).every(([key, value]) => item[key as keyof T] === value),
-      ) ?? null,
+    findOne: jest.fn(
+      async ({ where }: { where: Partial<T> }) =>
+        items.find((item) =>
+          Object.entries(where).every(
+            ([key, value]) => item[key as keyof T] === value,
+          ),
+        ) ?? null,
     ),
     create: jest.fn((value: Partial<T>) => value),
     save: jest.fn(async (value: T) => value),
@@ -33,7 +36,9 @@ describe('ColorCardService', () => {
         fileName: 'new.png',
         sizeMb: 1,
       })),
-      getPresignedUrl: jest.fn(async (fileKey: string) => `https://example.test/${fileKey}`),
+      getPresignedUrl: jest.fn(
+        async (fileKey: string) => `https://example.test/${fileKey}`,
+      ),
     };
 
     const service = new ColorCardService(

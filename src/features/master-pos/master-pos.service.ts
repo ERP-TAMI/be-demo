@@ -54,7 +54,11 @@ export class MasterPosService {
   async findOne(id: string): Promise<MasterPo> {
     const mpo = await this.masterPoRepo.findOne({
       where: { id },
-      relations: ['linkedLines', 'linkedLines.poLine', 'linkedLines.poLine.colors'],
+      relations: [
+        'linkedLines',
+        'linkedLines.poLine',
+        'linkedLines.poLine.colors',
+      ],
     });
     if (!mpo) throw new NotFoundException(`Master PO #${id} not found`);
     return mpo;
@@ -87,7 +91,9 @@ export class MasterPosService {
   async confirm(id: string): Promise<MasterPo> {
     const mpo = await this.findOne(id);
     if (mpo.linkedLines?.length === 0) {
-      throw new BadRequestException('Cannot confirm Master PO without linked PO Lines');
+      throw new BadRequestException(
+        'Cannot confirm Master PO without linked PO Lines',
+      );
     }
     mpo.status = MasterPoStatus.CONFIRMED;
     return this.masterPoRepo.save(mpo);
@@ -168,7 +174,8 @@ export class MasterPosService {
 
     let totalQuantity = 0;
     let totalTrimCost = 0;
-    const byMaterialGroup: Record<string, { quantity: number; cost: number }> = {};
+    const byMaterialGroup: Record<string, { quantity: number; cost: number }> =
+      {};
     const byVendor: Record<string, { quantity: number; cost: number }> = {};
 
     for (const link of mpo.linkedLines || []) {
@@ -191,8 +198,7 @@ export class MasterPosService {
           byMaterialGroup[group].cost +=
             Number(bomLine.lineCostPerUnit) * bom.poQuantity;
 
-          const vendorId =
-            bomLine.masterMaterial?.id || 'default';
+          const vendorId = bomLine.masterMaterial?.id || 'default';
           if (!byVendor[vendorId]) {
             byVendor[vendorId] = { quantity: 0, cost: 0 };
           }

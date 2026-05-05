@@ -12,7 +12,9 @@ export class LineColorCard {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => LineColor, (color) => color.colorCard, { onDelete: 'CASCADE' })
+  @OneToOne(() => LineColor, (color) => color.colorCard, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'line_color_id' })
   lineColor: LineColor;
 

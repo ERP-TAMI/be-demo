@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import {
   Injectable,
   NotFoundException,
@@ -221,6 +222,11 @@ export class PoLinesService {
   async findOne(id: string): Promise<PoLine> {
     const line = await this.lineRepo.findOne({
       where: { id },
+      order: {
+        as3bSteps: {
+          orderIndex: 'ASC',
+        },
+      },
       relations: [
         'style', // Style cha — hiển thị thông tin kế thừa
         'colors',
@@ -303,15 +309,26 @@ export class PoLinesService {
         order: { orderIndex: 'ASC' },
       });
       if (styleSteps.length > 0) {
+        const idMap = new Map<string, string>();
+        // First pass: generate new IDs
+        styleSteps.forEach(s => {
+          idMap.set(s.id, crypto.randomUUID());
+        });
+        
         const lineSteps = styleSteps.map((s) =>
           this.stepRepo.create({
+            id: idMap.get(s.id),
             lineId: saved.id,
             stageId: s.stageId,
             stepName: s.stepName,
             description: s.description,
             timePerPc: s.timePerPc,
-            smv: s.smv,
+            ssv: s.ssv,
             orderIndex: s.orderIndex,
+            parentRowId: s.parentRowId ? idMap.get(s.parentRowId) : null,
+            isGroup: s.isGroup,
+            groupId: s.groupId,
+            groupItems: s.groupItems,
           }),
         );
         await this.stepRepo.save(lineSteps);
@@ -862,12 +879,16 @@ export class PoLinesService {
 
     // Lưu ảnh sau khi có sampleId
     if (images && images.length > 0) {
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const uuidRegex =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       const imgEntities = images.map((img) =>
         this.imageRepo.create({
           sampleId: saved.id,
           colorName: img.colorName || '',
-          colorId: (img.colorId && uuidRegex.test(img.colorId)) ? img.colorId : undefined,
+          colorId:
+            img.colorId && uuidRegex.test(img.colorId)
+              ? img.colorId
+              : undefined,
           imageUrl: img.imageUrl,
         }),
       );

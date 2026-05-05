@@ -110,7 +110,9 @@ export class ProductionDocsService {
   ): Promise<ProductionDoc | null> {
     if (doc?.finalDocKey) {
       try {
-        doc.finalDocUrl = await this.uploadsService.getPresignedUrl(doc.finalDocKey);
+        doc.finalDocUrl = await this.uploadsService.getPresignedUrl(
+          doc.finalDocKey,
+        );
       } catch {
         doc.finalDocUrl = null;
       }
@@ -214,7 +216,7 @@ export class ProductionDocsService {
       Array.isArray(styleDoc.sizeData) &&
       styleDoc.sizeData.length > 0
     ) {
-      const rows = (styleDoc.sizeData as any[]).map((r, i) =>
+      const rows = styleDoc.sizeData.map((r, i) =>
         this.sizeRowRepo.create({
           docId: doc.id,
           rowName: r.rowName ?? '',
@@ -289,9 +291,7 @@ export class ProductionDocsService {
     return groups
       .map((group, index) => ({
         heading: group.heading?.trim() || null,
-        headingColor: (group.headingColor === 'black' ? 'black' : 'red') as
-          | 'red'
-          | 'black',
+        headingColor: group.headingColor === 'black' ? ('black' as const) : ('red' as const),
         imageUrls: (group.imageUrls ?? []).filter(Boolean).slice(0, 2),
         orderIndex: group.orderIndex ?? index,
       }))
@@ -446,7 +446,11 @@ export class ProductionDocsService {
         }
       }
     };
-    const clearRangeBottomBorder = (rowIndex: number, left: number, right: number) => {
+    const clearRangeBottomBorder = (
+      rowIndex: number,
+      left: number,
+      right: number,
+    ) => {
       for (let c = left; c <= right; c++) {
         const cell = ws.getCell(rowIndex, c);
         const border = { ...cell.border };
@@ -707,12 +711,18 @@ export class ProductionDocsService {
     // Keep image layout on the original TLKT visual grid. Column H is wider only
     // for long text, but should not pull right-side image groups off balance.
     const IMAGE_LAYOUT_COLUMN_WIDTHS = [5, 36, 12, 12, 12, 12, 12, 10];
-    const FRAME_W_PX = IMAGE_LAYOUT_COLUMN_WIDTHS.reduce((s, w) => s + w * 7, 0);
-    const getSlotWidthPx = (startColZeroBased: number, endColZeroBased: number) =>
-      IMAGE_LAYOUT_COLUMN_WIDTHS.slice(startColZeroBased, endColZeroBased).reduce(
-        (sum, width) => sum + width * 7,
-        0,
-      );
+    const FRAME_W_PX = IMAGE_LAYOUT_COLUMN_WIDTHS.reduce(
+      (s, w) => s + w * 7,
+      0,
+    );
+    const getSlotWidthPx = (
+      startColZeroBased: number,
+      endColZeroBased: number,
+    ) =>
+      IMAGE_LAYOUT_COLUMN_WIDTHS.slice(
+        startColZeroBased,
+        endColZeroBased,
+      ).reduce((sum, width) => sum + width * 7, 0);
     const allocateGroupBounds = (
       groups: { imageUrls: string[] }[],
     ): { start: number; end: number }[] => {
@@ -775,9 +785,13 @@ export class ProductionDocsService {
             rowHeight: rowHeight.toFixed(2),
           });
 
-          for (let k = 0; k < rowsNeeded; k++) ws.getRow(row + k).height = rowHeight;
+          for (let k = 0; k < rowsNeeded; k++)
+            ws.getRow(row + k).height = rowHeight;
           setRangeBorder(
-            row, 1, row + rowsNeeded - 1, 8,
+            row,
+            1,
+            row + rowsNeeded - 1,
+            8,
             { top: true, right: true, bottom: true, left: true },
             'medium',
           );
@@ -812,7 +826,11 @@ export class ProductionDocsService {
         clearRangeBottomBorder(row - 1, 1, 8);
       }
 
-      for (let groupStart = 0; groupStart < imageGroups.length; groupStart += 2) {
+      for (
+        let groupStart = 0;
+        groupStart < imageGroups.length;
+        groupStart += 2
+      ) {
         const groupPair = imageGroups.slice(groupStart, groupStart + 2);
         const groupBounds = allocateGroupBounds(groupPair);
         const hasHeading = groupPair.some((group) => group.heading);
@@ -827,7 +845,9 @@ export class ProductionDocsService {
               headingSlot.end,
             );
             const headingCell = ws.getRow(row).getCell(headingSlot.start + 1);
-            headingCell.value = group.heading ? group.heading.toUpperCase() : '';
+            headingCell.value = group.heading
+              ? group.heading.toUpperCase()
+              : '';
             applyStyle(headingCell, {
               font: {
                 ...TABLE_FONT,
@@ -862,7 +882,11 @@ export class ProductionDocsService {
             validImageUrls.length,
           );
 
-          for (let imageIndex = 0; imageIndex < validImageUrls.length; imageIndex++) {
+          for (
+            let imageIndex = 0;
+            imageIndex < validImageUrls.length;
+            imageIndex++
+          ) {
             const imgUrl = validImageUrls[imageIndex];
             try {
               const resp = await axios.get<ArrayBuffer>(imgUrl, {
@@ -876,7 +900,10 @@ export class ProductionDocsService {
               const origW = dims2.width ?? FRAME_W_PX;
               const origH = dims2.height ?? 280;
               const slot = imageSlots[imageIndex];
-              const maxWidth = Math.max(1, getSlotWidthPx(slot.start, slot.end) - 8);
+              const maxWidth = Math.max(
+                1,
+                getSlotWidthPx(slot.start, slot.end) - 8,
+              );
               const scale = Math.min(
                 1,
                 maxWidth / origW,
@@ -904,7 +931,10 @@ export class ProductionDocsService {
         const rowMaxHeight =
           Math.max(...scaledImages.map((image) => image.scaledH)) +
           IMAGE_TOP_PADDING_PX;
-        const rowsNeeded = Math.max(1, Math.ceil(rowMaxHeight / DEFAULT_ROW_PX));
+        const rowsNeeded = Math.max(
+          1,
+          Math.ceil(rowMaxHeight / DEFAULT_ROW_PX),
+        );
         const rowHeight = rowMaxHeight / rowsNeeded;
 
         for (let k = 0; k < rowsNeeded; k++) {

@@ -38,8 +38,21 @@ export class LineAs3bStep {
   timePerPc: number;
 
   @Column({ type: 'decimal', precision: 8, scale: 3, default: 0 })
-  smv: number;
+  ssv: number;
 
   @Column({ type: 'int', default: 0, name: 'order_index' })
   orderIndex: number;
+
+  // Group hierarchy support
+  @Column({ type: 'uuid', nullable: true, name: 'parent_row_id' })
+  parentRowId: string | null;
+
+  @Column({ type: 'boolean', default: false, name: 'is_group' })
+  isGroup: boolean;
+
+  @Column({ type: 'uuid', nullable: true, name: 'group_id' })
+  groupId: string | null;
+
+  @Column({ type: 'jsonb', nullable: true, name: 'group_items' })
+  groupItems: object[] | null;
 }

@@ -120,7 +120,14 @@ export class PurchaseOrdersService {
 
   async findAll(): Promise<PurchaseOrder[]> {
     const pos = await this.poRepo.find({
-      order: { createdAt: 'DESC' },
+      order: { 
+        createdAt: 'DESC',
+        lines: {
+          as3bSteps: {
+            orderIndex: 'ASC',
+          },
+        },
+      },
       relations: [
         'lines',
         'lines.style',
@@ -142,6 +149,13 @@ export class PurchaseOrdersService {
   async findOne(id: string): Promise<PurchaseOrder> {
     const po = await this.poRepo.findOne({
       where: { id },
+      order: {
+        lines: {
+          as3bSteps: {
+            orderIndex: 'ASC',
+          },
+        },
+      },
       relations: [
         'lines',
         'lines.style',

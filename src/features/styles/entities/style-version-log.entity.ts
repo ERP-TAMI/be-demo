@@ -25,7 +25,12 @@ export class StyleVersionLog {
   @Column({ type: 'uuid', nullable: true, name: 'target_id' })
   targetId?: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'target_label' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'target_label',
+  })
   targetLabel?: string;
 
   @Column({ type: 'jsonb', nullable: true })

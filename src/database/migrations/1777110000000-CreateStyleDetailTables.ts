@@ -23,7 +23,7 @@ export class CreateStyleDetailTables1777110000000 implements MigrationInterface 
         "step_name" varchar(255) NOT NULL,
         "description" text,
         "time_per_pc" decimal(8,3) NOT NULL DEFAULT 0,
-        "smv" decimal(8,3) NOT NULL DEFAULT 0,
+        "ssv" decimal(8,3) NOT NULL DEFAULT 0,
         "order_index" integer NOT NULL DEFAULT 0,
         "created_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
         "updated_at" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
@@ -133,11 +133,21 @@ export class CreateStyleDetailTables1777110000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_style_production_docs_style_id"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_style_version_logs_created_at"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_style_version_logs_style_id"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_style_as3b_steps_order_index"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_style_as3b_steps_style_id"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_style_production_docs_style_id"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_style_version_logs_created_at"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_style_version_logs_style_id"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_style_as3b_steps_order_index"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_style_as3b_steps_style_id"`,
+    );
 
     await queryRunner.query(`
       ALTER TABLE "style_production_docs"

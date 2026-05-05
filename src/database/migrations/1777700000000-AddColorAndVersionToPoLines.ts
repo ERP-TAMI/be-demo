@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddColorAndVersionToPoLines1777700000000
-  implements MigrationInterface
-{
+export class AddColorAndVersionToPoLines1777700000000 implements MigrationInterface {
   name = 'AddColorAndVersionToPoLines1777700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

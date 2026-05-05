@@ -86,7 +86,10 @@ export class StyleProductionDocsController {
       limits: { fileSize: MAX_FILE_SIZE },
       fileFilter: (_req, file, cb) => {
         if (!ALLOWED_MIME.includes(file.mimetype)) {
-          return cb(new BadRequestException('Chỉ chấp nhận PNG, JPG hoặc WebP'), false);
+          return cb(
+            new BadRequestException('Chỉ chấp nhận PNG, JPG hoặc WebP'),
+            false,
+          );
         }
         cb(null, true);
       },
@@ -97,27 +100,32 @@ export class StyleProductionDocsController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('Vui lòng chọn file ảnh');
-    
+
     // file.buffer is available with memory storage; for disk storage, read from path
-    const buffer = file.buffer ?? await import('fs').then(fs => fs.promises.readFile(file.path));
-    
+    const buffer =
+      file.buffer ??
+      (await import('fs').then((fs) => fs.promises.readFile(file.path)));
+
     const result = await this.uploadsService.uploadFile(
       'production-docs',
       file.originalname,
       buffer,
       file.mimetype,
     );
-    
+
     // Clean up temp file if it was saved to disk
     if (file.path) {
-      import('fs').then(fs => fs.promises.unlink(file.path).catch(() => {}));
+      import('fs').then((fs) => fs.promises.unlink(file.path).catch(() => {}));
     }
-    
+
     return { url: result.fileUrl };
   }
 
   @Get('export')
-  @Header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+  @Header(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  )
   @Header('Content-Disposition', 'attachment; filename="tai-lieu-sx.xlsx"')
   async exportExcel(
     @Param('styleId') styleId: string,

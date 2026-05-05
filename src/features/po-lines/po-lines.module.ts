@@ -29,7 +29,7 @@ import { Sample } from '../samples/entities/sample.entity.js';
   imports: [
     TypeOrmModule.forFeature([
       PoLine,
-      PoLineVersion,       // Version control snapshots
+      PoLineVersion, // Version control snapshots
       LineColor,
       LineColorSize,
       LineFile,
@@ -40,9 +40,9 @@ import { Sample } from '../samples/entities/sample.entity.js';
       LineColorCard,
       PoVersionLog,
       PurchaseOrder,
-      StyleAs3bStep,       // Để clone AS3B khi tạo PoLine
-      Style,               // Để validate Status=Active & kế thừa thông tin
-      Bom,                 // Để tạo BOM Draft khi lock PoLine
+      StyleAs3bStep, // Để clone AS3B khi tạo PoLine
+      Style, // Để validate Status=Active & kế thừa thông tin
+      Bom, // Để tạo BOM Draft khi lock PoLine
       StyleProductionDoc,
       ProductionDoc,
       ProductionDocSizeRow,
