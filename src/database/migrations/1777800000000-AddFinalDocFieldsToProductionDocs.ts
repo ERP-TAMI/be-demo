@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddFinalDocFieldsToProductionDocs1777800000000
-  implements MigrationInterface
-{
+export class AddFinalDocFieldsToProductionDocs1777800000000 implements MigrationInterface {
   name = 'AddFinalDocFieldsToProductionDocs1777800000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -18,8 +16,14 @@ export class AddFinalDocFieldsToProductionDocs1777800000000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "production_docs" DROP COLUMN "final_doc_url"`);
-    await queryRunner.query(`ALTER TABLE "production_docs" DROP COLUMN "final_doc_name"`);
-    await queryRunner.query(`ALTER TABLE "production_docs" DROP COLUMN "final_doc_key"`);
+    await queryRunner.query(
+      `ALTER TABLE "production_docs" DROP COLUMN "final_doc_url"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "production_docs" DROP COLUMN "final_doc_name"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "production_docs" DROP COLUMN "final_doc_key"`,
+    );
   }
 }

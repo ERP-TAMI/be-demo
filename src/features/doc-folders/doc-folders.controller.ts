@@ -87,7 +87,8 @@ export class DocFoldersController {
     const ext = file.originalname.split('.').pop()?.toLowerCase() ?? 'file';
     let type = 'file';
     if (ext === 'pdf') type = 'pdf';
-    else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) type = 'image';
+    else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext))
+      type = 'image';
     else if (['xlsx', 'xls'].includes(ext)) type = 'xlsx';
     else if (['doc', 'docx'].includes(ext)) type = 'docx';
 

@@ -26,8 +26,8 @@ export class DebugAllExceptionFilter implements ExceptionFilter {
       exception instanceof HttpException
         ? exception.getResponse()
         : exception instanceof Error
-        ? exception.message
-        : 'Internal server error';
+          ? exception.message
+          : 'Internal server error';
 
     this.logger.error(
       `[${request.method}] ${request.url} → ${status}`,

@@ -42,7 +42,11 @@ export class ColorsService {
     return color;
   }
 
-  async create(styleId: string, dto: CreateColorDto, actor?: string): Promise<Color> {
+  async create(
+    styleId: string,
+    dto: CreateColorDto,
+    actor?: string,
+  ): Promise<Color> {
     const color = this.colorRepo.create({
       ...dto,
       styleId,

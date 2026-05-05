@@ -125,7 +125,7 @@ export class StylesController {
           stepName: string;
           description?: string;
           timePerPc: number;
-          smv: number;
+          ssv: number;
           orderIndex: number;
         }>
       | {
@@ -134,7 +134,7 @@ export class StylesController {
             stepName: string;
             description?: string;
             timePerPc: number;
-            smv: number;
+            ssv: number;
             orderIndex: number;
           }>;
         },
@@ -168,9 +168,19 @@ export class StylesController {
   @Post(':id/sample')
   createOrReplaceSample(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { description?: string; images?: string[]; dateTime?: string; internalNote?: string },
+    @Body()
+    body: {
+      description?: string;
+      images?: string[];
+      dateTime?: string;
+      internalNote?: string;
+    },
     @Request() req: { user?: { email: string } },
   ) {
-    return this.service.createOrReplaceSampleVersion(id, body, req.user?.email ?? 'system');
+    return this.service.createOrReplaceSampleVersion(
+      id,
+      body,
+      req.user?.email ?? 'system',
+    );
   }
 }

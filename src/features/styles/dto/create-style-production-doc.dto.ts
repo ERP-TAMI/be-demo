@@ -10,4 +10,3 @@ export class CreateStyleProductionDocDto extends UpdateStyleProductionDocDto {
   @IsString()
   declare description?: string;
 }
-

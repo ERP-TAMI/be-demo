@@ -115,17 +115,21 @@ export class ProductionPlansService {
     }
     daily.plannedQty = plannedQty;
     if (actualQty !== undefined) daily.actualQty = actualQty;
-    if (isManualOverride !== undefined) daily.isManualOverride = isManualOverride;
+    if (isManualOverride !== undefined)
+      daily.isManualOverride = isManualOverride;
     await this.dailyRepo.save(daily);
 
     // Run engine when actual is updated OR a manual override is saved
-    const shouldRunEngine = actualQty !== undefined || isManualOverride === true;
+    const shouldRunEngine =
+      actualQty !== undefined || isManualOverride === true;
     if (shouldRunEngine) {
       await this.engine.recalculate(planId);
       this.sse.emit(planId);
     }
 
-    return this.dailyRepo.findOne({ where: { planId, day } }) as Promise<DailyPlan>;
+    return this.dailyRepo.findOne({
+      where: { planId, day },
+    }) as Promise<DailyPlan>;
   }
 
   async bulkUpsertDailyPlans(

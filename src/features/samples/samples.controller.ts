@@ -11,10 +11,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { SamplesService } from './samples.service.js';
-import {
-  CreateSampleDto,
-  UpdateSampleDto,
-} from './dto/create-sample.dto.js';
+import { CreateSampleDto, UpdateSampleDto } from './dto/create-sample.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { SampleType, SampleStatus } from './entities/sample.entity';
 

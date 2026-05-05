@@ -11,6 +11,8 @@ export class AddCreatedAtToBomLines1777600000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "bom_lines" DROP COLUMN IF EXISTS "created_at"`);
+    await queryRunner.query(
+      `ALTER TABLE "bom_lines" DROP COLUMN IF EXISTS "created_at"`,
+    );
   }
 }

@@ -8,9 +8,22 @@ import { Stage } from './entities/stage.entity';
 import { Workshop } from './entities/workshop.entity';
 import { StockMovement } from './entities/stock-movement.entity';
 import { MaterialSize } from './entities/material-size.entity';
+import { StageGroup } from './entities/stage-group.entity';
+import { StageGroupItem } from './entities/stage-group-item.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Material, MaterialGroup, Stage, Workshop, StockMovement, MaterialSize])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Material,
+      MaterialGroup,
+      Stage,
+      Workshop,
+      StockMovement,
+      MaterialSize,
+      StageGroup,
+      StageGroupItem,
+    ]),
+  ],
   controllers: [MastersController],
   providers: [MastersService],
   exports: [MastersService],

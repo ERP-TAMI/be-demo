@@ -70,7 +70,12 @@ export class StyleProductionDoc {
 
   // Dynamic sections (JSON)
   @Column({ type: 'jsonb', nullable: true })
-  sections: { title: string; content: string; imageUrls: string[]; orderIndex: number }[];
+  sections: {
+    title: string;
+    content: string;
+    imageUrls: string[];
+    orderIndex: number;
+  }[];
 
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'created_by' })
   createdBy: string;

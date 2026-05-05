@@ -28,6 +28,9 @@ export class DocFolder {
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt: Date;
 
-  @OneToMany(() => DocFile, (file) => file.folder, { eager: true, cascade: true })
+  @OneToMany(() => DocFile, (file) => file.folder, {
+    eager: true,
+    cascade: true,
+  })
   files: DocFile[];
 }

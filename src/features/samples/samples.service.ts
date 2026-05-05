@@ -5,11 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import {
-  Sample,
-  SampleStatus,
-  SampleType,
-} from './entities/sample.entity';
+import { Sample, SampleStatus, SampleType } from './entities/sample.entity';
 import { CreateSampleDto, UpdateSampleDto } from './dto/create-sample.dto.js';
 
 @Injectable()
@@ -80,7 +76,9 @@ export class SamplesService {
       where: { sampleCode: dto.sampleCode },
     });
     if (existing) {
-      throw new ConflictException(`Sample code "${dto.sampleCode}" already exists`);
+      throw new ConflictException(
+        `Sample code "${dto.sampleCode}" already exists`,
+      );
     }
 
     const sample = new Sample();

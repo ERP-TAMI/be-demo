@@ -22,7 +22,12 @@ export class DraftBom {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'varchar', length: 100, unique: true, name: 'draft_bom_code' })
+  @Column({
+    type: 'varchar',
+    length: 100,
+    unique: true,
+    name: 'draft_bom_code',
+  })
   draftBomCode: string;
 
   @ManyToOne(() => Style, { nullable: true })

@@ -12,10 +12,24 @@ import { Stage } from './entities/stage.entity';
 import { Workshop } from './entities/workshop.entity';
 import { StockMovement } from './entities/stock-movement.entity';
 import { MaterialSize } from './entities/material-size.entity';
-import { CreateMaterialDto, UpdateMaterialDto, AdjustStockDto } from './dto/material.dto.js';
-import { CreateMaterialSizeDto, UpdateMaterialSizeDto, BulkCreateMaterialSizeDto } from './dto/material-size.dto.js';
+import {
+  CreateMaterialDto,
+  UpdateMaterialDto,
+  AdjustStockDto,
+} from './dto/material.dto.js';
+import {
+  CreateMaterialSizeDto,
+  UpdateMaterialSizeDto,
+  BulkCreateMaterialSizeDto,
+} from './dto/material-size.dto.js';
 import { CreateStageDto, UpdateStageDto } from './dto/stage.dto.js';
 import { CreateWorkshopDto, UpdateWorkshopDto } from './dto/workshop.dto.js';
+import { StageGroup, StageGroupStatus } from './entities/stage-group.entity';
+import { StageGroupItem } from './entities/stage-group-item.entity';
+import {
+  CreateStageGroupDto,
+  UpdateStageGroupDto,
+} from './dto/stage-group.dto.js';
 
 @Injectable()
 export class MastersService {
@@ -32,6 +46,10 @@ export class MastersService {
     private readonly stockMovementRepo: Repository<StockMovement>,
     @InjectRepository(MaterialSize)
     private readonly materialSizeRepo: Repository<MaterialSize>,
+    @InjectRepository(StageGroup)
+    private readonly stageGroupRepo: Repository<StageGroup>,
+    @InjectRepository(StageGroupItem)
+    private readonly stageGroupItemRepo: Repository<StageGroupItem>,
   ) {}
 
   // ─── Materials ───────────────────────────────────────────────────────────────
@@ -72,9 +90,13 @@ export class MastersService {
     const { materialCode, ...rest } = dto;
 
     if (materialCode !== undefined && materialCode !== material.materialCode) {
-      const existing = await this.materialRepo.findOne({ where: { materialCode } });
+      const existing = await this.materialRepo.findOne({
+        where: { materialCode },
+      });
       if (existing) {
-        throw new ConflictException(`Material code "${materialCode}" already exists`);
+        throw new ConflictException(
+          `Material code "${materialCode}" already exists`,
+        );
       }
     }
 
@@ -82,7 +104,9 @@ export class MastersService {
     const defined = Object.fromEntries(
       Object.entries(rest).filter(([, v]) => v !== undefined),
     );
-    Object.assign(material, defined, { materialCode: materialCode ?? material.materialCode });
+    Object.assign(material, defined, {
+      materialCode: materialCode ?? material.materialCode,
+    });
     return this.materialRepo.save(material);
   }
 
@@ -92,8 +116,10 @@ export class MastersService {
   }
 
   async findAllMaterialsWithStock(): Promise<Material[]> {
-    const materials = await this.materialRepo.find({ order: { materialCode: 'ASC' } });
-    return materials.map(m => this.addStockStatus(m));
+    const materials = await this.materialRepo.find({
+      order: { materialCode: 'ASC' },
+    });
+    return materials.map((m) => this.addStockStatus(m));
   }
 
   async findLowStockMaterials(): Promise<Material[]> {
@@ -103,7 +129,7 @@ export class MastersService {
       .andWhere('material.status = :status', { status: 'Active' })
       .orderBy('material.currentStock', 'ASC')
       .getMany();
-    return materials.map(m => this.addStockStatus(m));
+    return materials.map((m) => this.addStockStatus(m));
   }
 
   async adjustStock(
@@ -300,20 +326,26 @@ export class MastersService {
     return this.materialSizeRepo.save(size);
   }
 
-  async bulkCreateMaterialSizes(materialId: string, dto: BulkCreateMaterialSizeDto): Promise<MaterialSize[]> {
+  async bulkCreateMaterialSizes(
+    materialId: string,
+    dto: BulkCreateMaterialSizeDto,
+  ): Promise<MaterialSize[]> {
     await this.findOneMaterial(materialId);
 
-    const sizes = dto.sizes.map(size =>
+    const sizes = dto.sizes.map((size) =>
       this.materialSizeRepo.create({
         materialId,
         size,
-      })
+      }),
     );
 
     return this.materialSizeRepo.save(sizes);
   }
 
-  async updateMaterialSize(id: string, dto: UpdateMaterialSizeDto): Promise<MaterialSize> {
+  async updateMaterialSize(
+    id: string,
+    dto: UpdateMaterialSizeDto,
+  ): Promise<MaterialSize> {
     const size = await this.materialSizeRepo.findOne({ where: { id } });
     if (!size) {
       throw new NotFoundException(`MaterialSize #${id} not found`);
@@ -335,5 +367,89 @@ export class MastersService {
     const material = await this.findOneMaterial(materialId);
     const sizes = await this.findAllSizesByMaterial(materialId);
     return { ...material, sizes };
+  }
+
+  // ─── Stage Groups ────────────────────────────────────────────────────────────
+
+  async findAllStageGroups(): Promise<StageGroup[]> {
+    return this.stageGroupRepo.find({
+      relations: ['items'],
+      order: { groupCode: 'ASC' },
+    });
+  }
+
+  async findOneStageGroup(id: string): Promise<StageGroup> {
+    const group = await this.stageGroupRepo.findOne({
+      where: { id },
+      relations: ['items'],
+    });
+    if (!group) throw new NotFoundException(`StageGroup #${id} not found`);
+    return group;
+  }
+
+  async createStageGroup(dto: CreateStageGroupDto): Promise<StageGroup> {
+    const existing = await this.stageGroupRepo.findOne({
+      where: { groupCode: dto.groupCode },
+    });
+    if (existing)
+      throw new ConflictException(
+        `Stage group code "${dto.groupCode}" already exists`,
+      );
+
+    const group = this.stageGroupRepo.create({
+      groupCode: dto.groupCode,
+      groupName: dto.groupName,
+      description: dto.description,
+      status: StageGroupStatus.ACTIVE,
+    });
+    const saved = await this.stageGroupRepo.save(group);
+
+    if (dto.items?.length) {
+      const items = dto.items.map((item, idx) =>
+        this.stageGroupItemRepo.create({
+          groupId: saved.id,
+          stageName: item.stageName,
+          description: item.description,
+          ssv: item.ssv ?? 10,
+          orderIndex: item.orderIndex ?? idx,
+        }),
+      );
+      await this.stageGroupItemRepo.save(items);
+    }
+
+    return this.findOneStageGroup(saved.id);
+  }
+
+  async updateStageGroup(
+    id: string,
+    dto: UpdateStageGroupDto,
+  ): Promise<StageGroup> {
+    const group = await this.findOneStageGroup(id);
+    if (dto.groupName !== undefined) group.groupName = dto.groupName;
+    if (dto.description !== undefined) group.description = dto.description;
+    await this.stageGroupRepo.save(group);
+
+    if (dto.items !== undefined) {
+      await this.stageGroupItemRepo.delete({ groupId: id });
+      if (dto.items.length) {
+        const items = dto.items.map((item, idx) =>
+          this.stageGroupItemRepo.create({
+            groupId: id,
+            stageName: item.stageName,
+            description: item.description,
+            ssv: item.ssv ?? 10,
+            orderIndex: item.orderIndex ?? idx,
+          }),
+        );
+        await this.stageGroupItemRepo.save(items);
+      }
+    }
+
+    return this.findOneStageGroup(id);
+  }
+
+  async removeStageGroup(id: string): Promise<void> {
+    const group = await this.findOneStageGroup(id);
+    await this.stageGroupRepo.remove(group);
   }
 }

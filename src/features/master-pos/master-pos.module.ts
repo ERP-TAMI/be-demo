@@ -8,9 +8,7 @@ import { PoLine } from '../po-lines/entities/po-line.entity';
 import { Bom } from '../boms/entities/bom.entity';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([MasterPo, MasterPoLine, PoLine, Bom]),
-  ],
+  imports: [TypeOrmModule.forFeature([MasterPo, MasterPoLine, PoLine, Bom])],
   controllers: [MasterPosController],
   providers: [MasterPosService],
   exports: [MasterPosService],

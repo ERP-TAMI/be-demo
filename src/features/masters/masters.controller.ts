@@ -10,10 +10,22 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { MastersService } from './masters.service.js';
-import { CreateMaterialDto, UpdateMaterialDto, AdjustStockDto } from './dto/material.dto.js';
-import { CreateMaterialSizeDto, UpdateMaterialSizeDto, BulkCreateMaterialSizeDto } from './dto/material-size.dto.js';
+import {
+  CreateMaterialDto,
+  UpdateMaterialDto,
+  AdjustStockDto,
+} from './dto/material.dto.js';
+import {
+  CreateMaterialSizeDto,
+  UpdateMaterialSizeDto,
+  BulkCreateMaterialSizeDto,
+} from './dto/material-size.dto.js';
 import { CreateStageDto, UpdateStageDto } from './dto/stage.dto.js';
 import { CreateWorkshopDto, UpdateWorkshopDto } from './dto/workshop.dto.js';
+import {
+  CreateStageGroupDto,
+  UpdateStageGroupDto,
+} from './dto/stage-group.dto.js';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CurrentUser } from '../auth/decorators/current-user.decorator.js';
 
@@ -131,6 +143,36 @@ export class MastersController {
     return this.mastersService.removeStage(id);
   }
 
+  // ─── Stage Groups ────────────────────────────────────────────────────────────
+
+  @Get('stage-groups')
+  findAllStageGroups() {
+    return this.mastersService.findAllStageGroups();
+  }
+
+  @Get('stage-groups/:id')
+  findOneStageGroup(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mastersService.findOneStageGroup(id);
+  }
+
+  @Post('stage-groups')
+  createStageGroup(@Body() dto: CreateStageGroupDto) {
+    return this.mastersService.createStageGroup(dto);
+  }
+
+  @Patch('stage-groups/:id')
+  updateStageGroup(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateStageGroupDto,
+  ) {
+    return this.mastersService.updateStageGroup(id, dto);
+  }
+
+  @Delete('stage-groups/:id')
+  removeStageGroup(@Param('id', ParseUUIDPipe) id: string) {
+    return this.mastersService.removeStageGroup(id);
+  }
+
   // ─── Workshops ───────────────────────────────────────────────────────────────
 
   @Get('workshops')
@@ -164,7 +206,9 @@ export class MastersController {
   // ─── Material Sizes ─────────────────────────────────────────────────────────
 
   @Get('materials/:materialId/sizes')
-  findAllSizesByMaterial(@Param('materialId', ParseUUIDPipe) materialId: string) {
+  findAllSizesByMaterial(
+    @Param('materialId', ParseUUIDPipe) materialId: string,
+  ) {
     return this.mastersService.findAllSizesByMaterial(materialId);
   }
 

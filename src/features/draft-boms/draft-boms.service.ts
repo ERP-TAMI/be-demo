@@ -113,8 +113,7 @@ export class DraftBomsService {
       ...dto,
       draftBomId: bomId,
       lineCostPerUnit:
-        Number(dto.unitCost ?? 0) *
-        (1 + Number(dto.yieldPct ?? 0) / 100),
+        Number(dto.unitCost ?? 0) * (1 + Number(dto.yieldPct ?? 0) / 100),
     });
     const saved = await this.lineRepo.save(line);
     await this.recomputeTotal(bomId);
@@ -126,15 +125,16 @@ export class DraftBomsService {
     lineId: string,
     dto: Partial<DraftBomLineDto>,
   ): Promise<DraftBomLine> {
-    const line = await this.lineRepo.findOne({ where: { id: lineId, draftBomId: bomId } });
+    const line = await this.lineRepo.findOne({
+      where: { id: lineId, draftBomId: bomId },
+    });
     if (!line) {
       throw new NotFoundException(`Line #${lineId} not found in BOM #${bomId}`);
     }
 
     const patched = { ...line, ...dto };
     patched.lineCostPerUnit =
-      Number(patched.unitCost ?? 0) *
-      (1 + Number(patched.yieldPct ?? 0) / 100);
+      Number(patched.unitCost ?? 0) * (1 + Number(patched.yieldPct ?? 0) / 100);
 
     const saved = await this.lineRepo.save(patched);
     await this.recomputeTotal(bomId);
@@ -142,7 +142,9 @@ export class DraftBomsService {
   }
 
   async removeLine(bomId: string, lineId: string): Promise<void> {
-    const line = await this.lineRepo.findOne({ where: { id: lineId, draftBomId: bomId } });
+    const line = await this.lineRepo.findOne({
+      where: { id: lineId, draftBomId: bomId },
+    });
     if (!line) {
       throw new NotFoundException(`Line #${lineId} not found in BOM #${bomId}`);
     }

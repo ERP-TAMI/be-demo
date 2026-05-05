@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RefactorStyleColorMasterPo1777000000000
-  implements MigrationInterface
-{
+export class RefactorStyleColorMasterPo1777000000000 implements MigrationInterface {
   name = 'RefactorStyleColorMasterPo1777000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -369,13 +367,9 @@ export class RefactorStyleColorMasterPo1777000000000
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Xoa indexes
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_boms_master_po_id"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_boms_master_po_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_boms_style_id"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_po_lines_style_id"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_po_lines_style_id"`);
     await queryRunner.query(
       `DROP INDEX IF EXISTS "idx_master_po_lines_po_line_id"`,
     );
@@ -386,29 +380,17 @@ export class RefactorStyleColorMasterPo1777000000000
       `DROP INDEX IF EXISTS "idx_master_pos_shipping_month"`,
     );
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_master_pos_status"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_master_pos_code"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_draft_boms_status"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_draft_boms_color_id"`,
-    );
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_draft_boms_style_id"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_master_pos_code"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_draft_boms_status"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_draft_boms_color_id"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_draft_boms_style_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_samples_status"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_samples_color_id"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_samples_color_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_samples_style_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_colors_status"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_colors_style_id"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_styles_status"`);
-    await queryRunner.query(
-      `DROP INDEX IF EXISTS "idx_styles_style_code"`,
-    );
+    await queryRunner.query(`DROP INDEX IF EXISTS "idx_styles_style_code"`);
 
     // Xoa foreign keys (theo thu tu nguoc lai)
     await queryRunner.query(

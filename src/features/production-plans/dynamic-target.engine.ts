@@ -34,7 +34,9 @@ export interface RedistributionRow {
  * computeRedistribution — pure function, no side effects.
  * Returns the rows to upsert for future unlocked days.
  */
-export function computeRedistribution(input: RedistributionInput): RedistributionRow[] {
+export function computeRedistribution(
+  input: RedistributionInput,
+): RedistributionRow[] {
   const { plannedQuantity, etdDay, todayDay, dailyRows } = input;
 
   const totalActual = dailyRows.reduce((s, r) => s + (r.actualQty ?? 0), 0);
@@ -43,7 +45,10 @@ export function computeRedistribution(input: RedistributionInput): Redistributio
     .filter((r) => r.isManualOverride && r.day > todayDay)
     .reduce((s, r) => s + r.plannedQty, 0);
 
-  const remaining = Math.max(0, plannedQuantity - totalActual - lockedFutureTotal);
+  const remaining = Math.max(
+    0,
+    plannedQuantity - totalActual - lockedFutureTotal,
+  );
 
   const lockedDays = new Set(
     dailyRows
@@ -58,9 +63,14 @@ export function computeRedistribution(input: RedistributionInput): Redistributio
 
   if (futureDays.length === 0) return [];
 
-  const targetPerDay = remaining > 0 ? Math.ceil(remaining / futureDays.length) : 0;
+  const targetPerDay =
+    remaining > 0 ? Math.ceil(remaining / futureDays.length) : 0;
 
-  return futureDays.map((day) => ({ day, plannedQty: targetPerDay, isManualOverride: false }));
+  return futureDays.map((day) => ({
+    day,
+    plannedQty: targetPerDay,
+    isManualOverride: false,
+  }));
 }
 
 // ── Injectable NestJS wrapper ─────────────────────────────────────────────────

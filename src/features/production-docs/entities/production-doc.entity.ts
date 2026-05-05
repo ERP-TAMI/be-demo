@@ -27,7 +27,12 @@ export class ProductionDoc {
   @Column({ type: 'text', nullable: true, name: 'section1_mo_ta' })
   section1MoTa: string | null;
 
-  @Column({ type: 'varchar', length: 1000, nullable: true, name: 'section1_image_url' })
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    nullable: true,
+    name: 'section1_image_url',
+  })
   section1ImageUrl: string | null;
 
   @Column({ type: 'text', nullable: true, name: 'section2_phu_lieu' })
@@ -39,13 +44,28 @@ export class ProductionDoc {
   @Column({ type: 'text', nullable: true, name: 'section4_comment_khach_hang' })
   section4CommentKhachHang: string | null;
 
-  @Column({ type: 'varchar', length: 1000, nullable: true, name: 'final_doc_key' })
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    nullable: true,
+    name: 'final_doc_key',
+  })
   finalDocKey: string | null;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'final_doc_name' })
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+    name: 'final_doc_name',
+  })
   finalDocName: string | null;
 
-  @Column({ type: 'varchar', length: 1000, nullable: true, name: 'final_doc_url' })
+  @Column({
+    type: 'varchar',
+    length: 1000,
+    nullable: true,
+    name: 'final_doc_url',
+  })
   finalDocUrl: string | null;
 
   @OneToMany(() => ProductionDocSizeRow, (r) => r.doc, { cascade: true })

@@ -8,7 +8,11 @@ import { Repository, DeepPartial, QueryFailedError } from 'typeorm';
 import { Style, StyleStatus, StyleFileMetadata } from './entities/style.entity';
 import { StyleAs3bStep } from './entities/style-as3b-step.entity';
 import { StyleVersionLog } from './entities/style-version-log.entity';
-import { Sample, SampleType, SampleStatus } from '../samples/entities/sample.entity';
+import {
+  Sample,
+  SampleType,
+  SampleStatus,
+} from '../samples/entities/sample.entity';
 import { DocFile } from '../doc-folders/entities/doc-file.entity';
 import { CreateStyleDto } from './dto/create-style.dto.js';
 import { UpdateStyleDto } from './dto/update-style.dto.js';
@@ -46,11 +50,6 @@ export class StylesService {
   async findOne(id: string): Promise<Style> {
     const style = await this.findOneInternal({ id });
     if (!style) throw new NotFoundException(`Style #${id} not found`);
-
-    if (style.as3bSteps) {
-      style.as3bSteps.sort((a, b) => a.orderIndex - b.orderIndex);
-    }
-
     return style;
   }
 
@@ -63,7 +62,9 @@ export class StylesService {
       where: { styleCode: dto.styleCode },
     });
     if (existing) {
-      throw new ConflictException(`Style code "${dto.styleCode}" already exists`);
+      throw new ConflictException(
+        `Style code "${dto.styleCode}" already exists`,
+      );
     }
 
     const style = this.styleRepo.create({
@@ -83,7 +84,11 @@ export class StylesService {
     return saved;
   }
 
-  async update(id: string, dto: UpdateStyleDto, actor?: string): Promise<Style> {
+  async update(
+    id: string,
+    dto: UpdateStyleDto,
+    actor?: string,
+  ): Promise<Style> {
     const style = await this.findOne(id);
     const oldValues: Record<string, unknown> = {};
 
@@ -118,7 +123,12 @@ export class StylesService {
     const style = await this.findOne(id);
     style.status = StyleStatus.DRAFT;
     const saved = await this.styleRepo.save(style);
-    await this.logActionSafe(id, 'STYLE_RESET', 'Reset style to draft', 'system');
+    await this.logActionSafe(
+      id,
+      'STYLE_RESET',
+      'Reset style to draft',
+      'system',
+    );
     return saved;
   }
 
@@ -127,14 +137,20 @@ export class StylesService {
     await this.styleRepo.remove(style);
   }
 
-  async clone(id: string, newStyleCode: string, actor?: string): Promise<Style> {
+  async clone(
+    id: string,
+    newStyleCode: string,
+    actor?: string,
+  ): Promise<Style> {
     const original = await this.findOne(id);
 
     const existing = await this.styleRepo.findOne({
       where: { styleCode: newStyleCode },
     });
     if (existing) {
-      throw new ConflictException(`Style code "${newStyleCode}" already exists`);
+      throw new ConflictException(
+        `Style code "${newStyleCode}" already exists`,
+      );
     }
 
     const cloned = this.styleRepo.create({
@@ -156,7 +172,7 @@ export class StylesService {
           stepName: step.stepName,
           description: step.description,
           timePerPc: step.timePerPc,
-          smv: step.smv,
+          ssv: step.ssv,
           orderIndex: step.orderIndex,
         }),
       );
@@ -179,7 +195,13 @@ export class StylesService {
   }
 
   async createFromDocuments(
-    dto: { styleCode: string; styleName: string; category?: string; description?: string; documentIds?: string[] },
+    dto: {
+      styleCode: string;
+      styleName: string;
+      category?: string;
+      description?: string;
+      documentIds?: string[];
+    },
     actor?: string,
   ): Promise<Style> {
     const existing = await this.styleRepo.findOne({
@@ -213,7 +235,10 @@ export class StylesService {
     return saved;
   }
 
-  async assignDocuments(styleId: string, documentIds: string[]): Promise<Style> {
+  async assignDocuments(
+    styleId: string,
+    documentIds: string[],
+  ): Promise<Style> {
     const style = await this.findOne(styleId);
 
     if (!documentIds || documentIds.length === 0) {
@@ -236,7 +261,7 @@ export class StylesService {
 
     // Append to existing files (avoid duplicates by id)
     const existingFileIds = new Set((style.files || []).map((f) => f.id));
-    const newFiles = fileMetadata.filter((f) => !existingFileIds.has(f.id as string));
+    const newFiles = fileMetadata.filter((f) => !existingFileIds.has(f.id));
 
     style.files = [...(style.files || []), ...newFiles];
     await this.styleRepo.save(style);
@@ -284,11 +309,13 @@ export class StylesService {
       changes: changes ?? [],
     };
     const log = this.logRepo.create(logData);
-    return this.logRepo.save(log) as Promise<StyleVersionLog>;
+    return this.logRepo.save(log);
   }
 
   private buildFindAllQuery(
-    filters: { status?: StyleStatus; category?: string; search?: string } | undefined,
+    filters:
+      | { status?: StyleStatus; category?: string; search?: string }
+      | undefined,
     includeOptionalRelations: boolean,
   ) {
     const query = this.styleRepo.createQueryBuilder('style');
@@ -298,7 +325,9 @@ export class StylesService {
     }
 
     if (filters?.category) {
-      query.andWhere('style.category = :category', { category: filters.category });
+      query.andWhere('style.category = :category', {
+        category: filters.category,
+      });
     }
 
     if (filters?.search) {
@@ -308,7 +337,9 @@ export class StylesService {
       );
     }
 
-    query.leftJoinAndSelect('style.colors', 'colors').leftJoinAndSelect('style.samples', 'samples');
+    query
+      .leftJoinAndSelect('style.colors', 'colors')
+      .leftJoinAndSelect('style.samples', 'samples');
 
     if (includeOptionalRelations) {
       query
@@ -316,13 +347,27 @@ export class StylesService {
         .leftJoinAndSelect('style.productionDocs', 'productionDocs');
     }
 
-    return query.orderBy('style.createdAt', 'DESC');
+    query.orderBy('style.createdAt', 'DESC');
+
+    if (includeOptionalRelations) {
+      query.addOrderBy('as3bSteps.orderIndex', 'ASC');
+    }
+
+    return query;
   }
 
-  private async findOneInternal(where: { id?: string; styleCode?: string }): Promise<Style | null> {
+  private async findOneInternal(where: {
+    id?: string;
+    styleCode?: string;
+  }): Promise<Style | null> {
     try {
       return await this.styleRepo.findOne({
         where,
+        order: {
+          as3bSteps: {
+            orderIndex: 'ASC',
+          },
+        },
         relations: ['colors', 'samples', 'as3bSteps', 'productionDocs'],
       });
     } catch (error) {
@@ -345,7 +390,15 @@ export class StylesService {
     targetLabel?: string | null,
     changes?: { field: string; label: string; before: any; after: any }[],
   ): Promise<void> {
-    await this.logActionSafe(styleId, type, reason, actor, targetId, targetLabel, changes);
+    await this.logActionSafe(
+      styleId,
+      type,
+      reason,
+      actor,
+      targetId,
+      targetLabel,
+      changes,
+    );
   }
 
   private async logActionSafe(
@@ -358,7 +411,15 @@ export class StylesService {
     changes?: { field: string; label: string; before: any; after: any }[],
   ): Promise<void> {
     try {
-      await this.logAction(styleId, type, reason, actor, targetId, targetLabel, changes);
+      await this.logAction(
+        styleId,
+        type,
+        reason,
+        actor,
+        targetId,
+        targetLabel,
+        changes,
+      );
     } catch (error) {
       if (!this.isMissingTableError(error, ['style_version_logs'])) {
         throw error;
@@ -367,7 +428,10 @@ export class StylesService {
   }
 
   private isMissingStyleDetailTableError(error: unknown): boolean {
-    return this.isMissingTableError(error, ['style_as3b_steps', 'style_production_docs']);
+    return this.isMissingTableError(error, [
+      'style_as3b_steps',
+      'style_production_docs',
+    ]);
   }
 
   private isMissingTableError(error: unknown, tableNames: string[]): boolean {
@@ -375,26 +439,42 @@ export class StylesService {
       return false;
     }
 
-    const driverError = (error as QueryFailedError & { driverError?: { code?: string; message?: string } }).driverError;
+    const driverError = (
+      error as QueryFailedError & {
+        driverError?: { code?: string; message?: string };
+      }
+    ).driverError;
     const message = driverError?.message ?? error.message ?? '';
 
-    return driverError?.code === '42P01' && tableNames.some((tableName) => message.includes(tableName));
+    return (
+      driverError?.code === '42P01' &&
+      tableNames.some((tableName) => message.includes(tableName))
+    );
   }
 
   async getSampleForStyle(styleId: string): Promise<Sample | null> {
     const style = await this.findOne(styleId);
-    const samples = await this.sampleRepo.find({ where: { styleId: style.id } });
+    const samples = await this.sampleRepo.find({
+      where: { styleId: style.id },
+    });
     if (!samples.length) return null;
     return samples[0];
   }
 
   async createOrReplaceSampleVersion(
     styleId: string,
-    body: { description?: string; images?: string[]; dateTime?: string; internalNote?: string },
+    body: {
+      description?: string;
+      images?: string[];
+      dateTime?: string;
+      internalNote?: string;
+    },
     actor?: string,
   ): Promise<Sample> {
     const style = await this.findOne(styleId);
-    const existingSamples = await this.sampleRepo.find({ where: { styleId: style.id } });
+    const existingSamples = await this.sampleRepo.find({
+      where: { styleId: style.id },
+    });
     const existing = existingSamples[0] ?? null;
 
     if (existing) {
