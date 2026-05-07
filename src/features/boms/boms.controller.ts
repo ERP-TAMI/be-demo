@@ -14,6 +14,9 @@ import {
 import { BomsService } from './boms.service.js';
 import { BomStatus } from './entities/bom.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
+import { UserRole } from '../user/entities/user.entity';
 import { Bom } from './entities/bom.entity';
 import { BomLine } from './entities/bom-line.entity';
 import { AggregateFilterDto } from './dto/aggregate-filter.dto';
@@ -126,6 +129,8 @@ export class BomsController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TPKH)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.service.remove(id);
   }

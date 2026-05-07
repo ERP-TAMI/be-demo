@@ -547,13 +547,13 @@ export class PoLinesService {
   /**
    * Chốt SP Final (Lock):
    * 1. Khoá thông số PoLine (status → Final)
-   * 2. Tự động tạo BOM Header Draft V1 rỗng kế thừa style+color+qty
-   * Business Rule: Chỉ TPKH được thực hiện. Không báo lỗi nếu chưa có DraftBom.
+   * 2. BOM được tạo thủ công ở màn BOM
+   * Business Rule: Chỉ TPKH được thực hiện.
    */
   async lockLine(
     id: string,
     actor = 'system',
-  ): Promise<{ line: PoLine; bom: Bom }> {
+  ): Promise<{ line: PoLine; bom: Bom | null }> {
     const line = await this.findOne(id);
 
     if (line.status === LineStatus.FINAL) {
@@ -563,37 +563,12 @@ export class PoLinesService {
       throw new BadRequestException('Không thể chốt sản phẩm đã bị hủy');
     }
 
-    // Tính tổng số lượng từ các màu (backward compat) hoặc dùng qty trực tiếp
-    let totalQty = 0;
-    if (line.colors && line.colors.length > 0) {
-      totalQty = line.colors.reduce(
-        (sum, c) =>
-          sum +
-          (c.sizes || []).reduce((s, sz) => s + Number(sz.quantity ?? 0), 0),
-        0,
-      );
-    }
-
     // Set status = Final
     line.status = LineStatus.FINAL;
     const savedLine = await this.lineRepo.save(line);
 
-    // Tạo BOM Header Draft V1 rỗng — kế thừa style+color+qty từ PoLine
-    const bom = this.bomRepo.create({
-      poId: line.poId,
-      lineId: line.id,
-      styleCode: line.styleCode,
-      productName: line.productName,
-      colorId: line.colorId ?? null,
-      colorName: line.colorName ?? null,
-      poQuantity: totalQty,
-      version: 1,
-      status: BomStatus.DRAFT,
-    });
-    const savedBom = await this.bomRepo.save(bom);
-
     await this.writeLineLog(savedLine, actor, PoEventType.LINE_STATUS_CHANGED, {
-      reason: `TPKH chốt Final — BOM Draft V1 đã được tạo tự động (BOM #${savedBom.id.slice(0, 8)})`,
+      reason: `TPKH chốt Final — BOM sẽ được tạo thủ công ở màn BOM`,
       changes: [
         {
           field: 'status',
@@ -604,7 +579,7 @@ export class PoLinesService {
       ],
     });
 
-    return { line: savedLine, bom: savedBom };
+    return { line: savedLine, bom: null };
   }
 
   /**
