@@ -1,5 +1,6 @@
 import { describe, it, expect } from '@jest/globals';
 import {
+  computeForecast,
   computeRedistribution,
   RedistributionInput,
 } from './dynamic-target.engine.js';
@@ -100,5 +101,185 @@ describe('computeRedistribution', () => {
     // days 1..10 = 10 future days, remaining=500, ceil(500/10)=50
     expect(result).toHaveLength(10);
     expect(result[0]).toMatchObject({ day: 1, plannedQty: 50 });
+  });
+});
+
+describe('computeForecast', () => {
+  it('marks late when assumed target cannot finish before ETD', () => {
+    const result = computeForecast({
+      plannedQuantity: 1000,
+      totalActual: 100,
+      assumedDailyTarget: 100,
+      etdDate: '2026-05-12',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11, 12, 13, 14, 15, 16, 17],
+    });
+    expect(result.remaining).toBe(900);
+    expect(result.daysNeeded).toBe(9);
+    expect(result.isLate).toBe(true);
+  });
+
+  it('marks on time and returns negative daysBeyondEtd when finishing early', () => {
+    const result = computeForecast({
+      plannedQuantity: 1000,
+      totalActual: 100,
+      assumedDailyTarget: 300,
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11],
+    });
+    expect(result.daysNeeded).toBe(3);
+    expect(result.isLate).toBe(false);
+    expect(result.daysBeyondEtd).toBeLessThan(0);
+  });
+
+  it('handles remaining = 0', () => {
+    const result = computeForecast({
+      plannedQuantity: 100,
+      totalActual: 100,
+      assumedDailyTarget: 0,
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10],
+    });
+    expect(result.remaining).toBe(0);
+    expect(result.daysNeeded).toBe(0);
+    expect(result.redistributedRows.every((row) => row.plannedQty === 0)).toBe(true);
+  });
+
+  it('handles assumedDailyTarget = 0', () => {
+    const result = computeForecast({
+      plannedQuantity: 100,
+      totalActual: 0,
+      assumedDailyTarget: 0,
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10],
+    });
+    expect(result.daysNeeded).toBe(Infinity);
+    expect(result.completionDate).toBeNull();
+  });
+
+  it('compensate-deficit spreads remaining across all future days', () => {
+    const result = computeForecast({
+      plannedQuantity: 600,
+      totalActual: 100,
+      assumedDailyTarget: 1,
+      mode: 'compensate-deficit',
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11, 12, 13],
+    });
+    expect(result.redistributedRows).toHaveLength(5);
+    expect(result.redistributedRows.every((row) => row.plannedQty === 100)).toBe(true);
+  });
+
+  it('reduce-pressure keeps all future days active', () => {
+    const result = computeForecast({
+      plannedQuantity: 300,
+      totalActual: 100,
+      assumedDailyTarget: 999,
+      mode: 'reduce-pressure',
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11, 12],
+    });
+    expect(result.daysNeeded).toBe(4);
+    expect(result.redistributedRows.every((row) => row.plannedQty === 50)).toBe(true);
+  });
+
+  it('shorten-time clears extra future days', () => {
+    const result = computeForecast({
+      plannedQuantity: 300,
+      totalActual: 100,
+      assumedDailyTarget: 100,
+      mode: 'shorten-time',
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11, 12],
+    });
+    expect(result.daysNeeded).toBe(2);
+    expect(result.redistributedRows).toEqual([
+      { day: 9, plannedQty: 100 },
+      { day: 10, plannedQty: 100 },
+      { day: 11, plannedQty: 0 },
+      { day: 12, plannedQty: 0 },
+    ]);
+  });
+
+  it('does not count Sundays in completion date when includeSunday is false', () => {
+    const result = computeForecast({
+      plannedQuantity: 300,
+      totalActual: 0,
+      assumedDailyTarget: 100,
+      mode: 'shorten-time',
+      etdDate: '2026-05-15',
+      todayDate: '2026-05-08',
+      forecastStartDate: '2026-05-09',
+      includeSunday: false,
+      futureDays: [9, 11, 12],
+    });
+    expect(result.daysNeeded).toBe(3);
+    expect(result.completionDate).toBe('2026-05-12');
+  });
+
+  it('average-actual-rate forecasts late when workshop is consistently slow', () => {
+    const result = computeForecast({
+      plannedQuantity: 1000,
+      totalActual: 200,
+      assumedDailyTarget: 0,
+      mode: 'average-actual-rate',
+      etdDate: '2026-05-12',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11, 12, 13, 14, 15, 16],
+      dailyRows: [
+        { day: 6, plannedQty: 150, actualQty: 90, isManualOverride: false },
+        { day: 7, plannedQty: 150, actualQty: 110, isManualOverride: false },
+      ],
+    });
+    expect(result.averageActualPerDay).toBe(100);
+    expect(result.averageCompletionPct).toBeCloseTo(66.67, 1);
+    expect(result.daysNeeded).toBe(8);
+    expect(result.isLate).toBe(true);
+    expect(result.forecastReason).toBe('average-actual-rate');
+    expect(result.recommendation).toBe('split-workshop');
+  });
+
+  it('average-actual-rate returns no completion date when there is no actual data', () => {
+    const result = computeForecast({
+      plannedQuantity: 1000,
+      totalActual: 0,
+      assumedDailyTarget: 0,
+      mode: 'average-actual-rate',
+      etdDate: '2026-05-20',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11],
+      dailyRows: [],
+    });
+    expect(result.averageActualPerDay).toBeNull();
+    expect(result.averageCompletionPct).toBeNull();
+    expect(result.daysNeeded).toBe(Infinity);
+    expect(result.completionDate).toBeNull();
+    expect(result.forecastReason).toBe('average-actual-rate');
+  });
+
+  it('average-actual-rate marks on time when actual average is fast enough', () => {
+    const result = computeForecast({
+      plannedQuantity: 1000,
+      totalActual: 600,
+      assumedDailyTarget: 0,
+      mode: 'average-actual-rate',
+      etdDate: '2026-05-12',
+      todayDate: '2026-05-08',
+      futureDays: [9, 10, 11, 12],
+      dailyRows: [
+        { day: 6, plannedQty: 150, actualQty: 300, isManualOverride: false },
+        { day: 7, plannedQty: 150, actualQty: 300, isManualOverride: false },
+      ],
+    });
+    expect(result.averageActualPerDay).toBe(300);
+    expect(result.daysNeeded).toBe(2);
+    expect(result.isLate).toBe(false);
+    expect(result.recommendation).toBeNull();
   });
 });
