@@ -361,15 +361,14 @@ export class StylesService {
     styleCode?: string;
   }): Promise<Style | null> {
     try {
-      return await this.styleRepo.findOne({
+      const style = await this.styleRepo.findOne({
         where,
-        order: {
-          as3bSteps: {
-            orderIndex: 'ASC',
-          },
-        },
         relations: ['colors', 'samples', 'as3bSteps', 'productionDocs'],
       });
+      if (style?.as3bSteps) {
+        style.as3bSteps.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      }
+      return style;
     } catch (error) {
       if (this.isMissingStyleDetailTableError(error)) {
         return this.styleRepo.findOne({

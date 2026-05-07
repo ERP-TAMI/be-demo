@@ -222,11 +222,6 @@ export class PoLinesService {
   async findOne(id: string): Promise<PoLine> {
     const line = await this.lineRepo.findOne({
       where: { id },
-      order: {
-        as3bSteps: {
-          orderIndex: 'ASC',
-        },
-      },
       relations: [
         'style', // Style cha — hiển thị thông tin kế thừa
         'colors',
@@ -240,6 +235,11 @@ export class PoLinesService {
       ],
     });
     if (!line) throw new NotFoundException(`Line #${id} not found`);
+    
+    if (line.as3bSteps) {
+      line.as3bSteps.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+    }
+    
     return line;
   }
 
@@ -746,6 +746,87 @@ export class PoLinesService {
     const line = await this.findOne(color.lineId);
     this.assertLineNotLocked(line);
     await this.colorRepo.remove(color);
+  }
+
+  /**
+   * Thay thế toàn bộ danh sách màu + sizes của một PO Line.
+   * Dùng cho trường hợp quản lý nhiều màu chung trong 1 PO Line (tách BOM sau).
+   * - Màu có id hợp lệ → update tên & sizes
+   * - Màu không có id hoặc id mới → insert
+   * - Màu cũ không còn trong payload → delete
+   */
+  async replaceColors(
+    lineId: string,
+    colorsPayload: Array<{
+      id?: string;
+      colorName: string;
+      sizes: Array<{ sizeLabel: string; quantity: number }>;
+    }>,
+    actor = 'system',
+  ): Promise<LineColor[]> {
+    const line = await this.findOne(lineId);
+    this.assertLineNotLocked(line);
+
+    const UUID_RE =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const validUUID = (v?: string) => v && UUID_RE.test(v) ? v : undefined;
+
+    const existingColors = await this.colorRepo.find({
+      where: { lineId },
+      relations: ['sizes'],
+    });
+
+    const payloadIds = new Set(
+      colorsPayload.map((c) => validUUID(c.id)).filter(Boolean),
+    );
+
+    // Xóa các màu không còn trong payload
+    const toDelete = existingColors.filter((c) => !payloadIds.has(c.id));
+    if (toDelete.length > 0) {
+      await this.colorRepo.remove(toDelete);
+    }
+
+    const result: LineColor[] = [];
+
+    for (const colorDto of colorsPayload) {
+      const existingId = validUUID(colorDto.id);
+      let color = existingId
+        ? existingColors.find((c) => c.id === existingId) ?? null
+        : null;
+
+      if (color) {
+        // Update tên màu
+        color.colorName = colorDto.colorName;
+        color = await this.colorRepo.save(color);
+        // Xóa hết sizes cũ
+        await this.sizeRepo.delete({ colorId: color.id });
+      } else {
+        // Insert màu mới
+        color = await this.colorRepo.save(
+          this.colorRepo.create({ lineId, colorName: colorDto.colorName }),
+        );
+      }
+
+      // Insert sizes mới
+      if (colorDto.sizes && colorDto.sizes.length > 0) {
+        const sizes = colorDto.sizes.map((s) =>
+          this.sizeRepo.create({
+            colorId: color!.id,
+            sizeLabel: s.sizeLabel,
+            quantity: Number(s.quantity) || 0,
+          }),
+        );
+        await this.sizeRepo.save(sizes);
+      }
+
+      result.push(color);
+    }
+
+    await this.writeLineLog(line, actor, PoEventType.LINE_UPDATED, {
+      reason: `Cập nhật ${colorsPayload.length} màu sắc`,
+    });
+
+    return result;
   }
 
   // ─── Line Files ─────────────────────────────────────────────────────────

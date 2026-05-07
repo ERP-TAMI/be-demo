@@ -108,6 +108,22 @@ export class PoLinesController {
     return this.service.removeColor(colorId);
   }
 
+  /**
+   * PUT /api/v1/purchase-orders/:poId/lines/:id/colors/sync
+   * Thay thế toàn bộ danh sách màu + sizes của PO Line.
+   * Dùng để quản lý nhiều màu chung trong 1 PO Line (tách BOM sau).
+   */
+  @Put(':id/colors/sync')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
+  replaceColors(
+    @Param('id', ParseUUIDPipe) lineId: string,
+    @Body('colors') colors: Array<{ id?: string; colorName: string; sizes: Array<{ sizeLabel: string; quantity: number }> }>,
+    @Request() req: { user?: { email?: string } },
+  ) {
+    return this.service.replaceColors(lineId, colors ?? [], req.user?.email ?? 'system');
+  }
+
   @Post('colors/:colorId/sizes')
   @UseGuards(RolesGuard)
   @Roles(...PO_LINE_EDITOR_ROLES)
