@@ -110,4 +110,46 @@ export class ProductionPlansController {
   ) {
     return this.service.bulkUpsertDailyPlans(planId, body);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/forecast')
+  forecast(
+    @Param('id', ParseUUIDPipe) planId: string,
+    @Body()
+    body: {
+      assumedDailyTarget?: number;
+      mode?:
+        | 'average-actual-rate'
+        | 'compensate-deficit'
+        | 'reduce-pressure'
+        | 'shorten-time';
+      includeSunday?: boolean;
+    },
+  ) {
+    return this.service.forecast(
+      planId,
+      Number(body.assumedDailyTarget || 0),
+      body.mode,
+      body.includeSunday,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/redistribute')
+  redistribute(
+    @Param('id', ParseUUIDPipe) planId: string,
+    @Body()
+    body: {
+      mode: 'compensate-deficit' | 'reduce-pressure' | 'shorten-time';
+      assumedDailyTarget?: number;
+      includeSunday?: boolean;
+    },
+  ) {
+    return this.service.applyRedistribution(
+      planId,
+      body.mode,
+      body.assumedDailyTarget,
+      body.includeSunday,
+    );
+  }
 }

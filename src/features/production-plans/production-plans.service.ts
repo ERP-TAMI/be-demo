@@ -1,9 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductionPlan } from './entities/production-plan.entity.js';
 import { DailyPlan } from './entities/daily-plan.entity.js';
-import { DynamicTargetEngineService } from './dynamic-target.engine.js';
+import {
+  computeForecast,
+  DynamicTargetEngineService,
+  ForecastResult,
+} from './dynamic-target.engine.js';
 import { PlansSseService } from './plans-sse.service.js';
 
 @Injectable()
@@ -83,6 +87,7 @@ export class ProductionPlansService {
     dto: Partial<ProductionPlan>,
     actorId?: string,
   ): Promise<ProductionPlan> {
+    this.assertPlanPeriodIsNotPast(dto.year, dto.month);
     const plan = this.planRepo.create({ ...dto, createdById: actorId });
     return this.planRepo.save(plan);
   }
@@ -108,7 +113,8 @@ export class ProductionPlansService {
     actualQty?: number,
     isManualOverride?: boolean,
   ): Promise<DailyPlan> {
-    await this.findOne(planId);
+    const plan = await this.findOne(planId);
+    this.assertManualPlanDayIsNotPast(plan, day, actualQty, isManualOverride);
     let daily = await this.dailyRepo.findOne({ where: { planId, day } });
     if (!daily) {
       daily = this.dailyRepo.create({ planId, day });
@@ -141,7 +147,15 @@ export class ProductionPlansService {
       isManualOverride?: boolean;
     }>,
   ): Promise<DailyPlan[]> {
-    await this.findOne(planId);
+    const plan = await this.findOne(planId);
+    days.forEach((day) =>
+      this.assertManualPlanDayIsNotPast(
+        plan,
+        day.day,
+        day.actualQty,
+        day.isManualOverride,
+      ),
+    );
     const saved = await Promise.all(
       days.map(async (d) => {
         let daily = await this.dailyRepo.findOne({
@@ -157,6 +171,196 @@ export class ProductionPlansService {
     );
     // Run engine once after all rows saved
     await this.engine.recalculate(planId);
+    this.sse.emit(planId);
+    return saved;
+  }
+
+  private assertPlanPeriodIsNotPast(year?: number, month?: number): void {
+    const planYear = Number(year || 0);
+    const planMonth = Number(month || 0);
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+
+    if (
+      planYear < currentYear ||
+      (planYear === currentYear && planMonth < currentMonth)
+    ) {
+      throw new BadRequestException(
+        'Cannot create production plans in a past month',
+      );
+    }
+  }
+
+  private assertManualPlanDayIsNotPast(
+    plan: ProductionPlan,
+    day: number,
+    actualQty?: number,
+    isManualOverride?: boolean,
+  ): void {
+    const updatesPlannedQty = actualQty === undefined || isManualOverride === true;
+    if (!updatesPlannedQty) return;
+
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
+
+    const isPastDay =
+      plan.year < currentYear ||
+      (plan.year === currentYear && plan.month < currentMonth) ||
+      (plan.year === currentYear &&
+        plan.month === currentMonth &&
+        Number(day) < currentDay);
+
+    if (isPastDay) {
+      throw new BadRequestException(
+        'Cannot update planned quantities for past days',
+      );
+    }
+  }
+
+  private isSunday(year: number, month: number, day: number): boolean {
+    return new Date(year, month - 1, day).getDay() === 0;
+  }
+
+  private formatLocalDate(date: Date): string {
+    return [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, '0'),
+      String(date.getDate()).padStart(2, '0'),
+    ].join('-');
+  }
+
+  private planIncludesSunday(plan: ProductionPlan): boolean {
+    return (plan.dailyPlans || []).some(
+      (row) =>
+        this.isSunday(plan.year, plan.month, row.day) &&
+        (Number(row.plannedQty || 0) > 0 || Number(row.actualQty || 0) > 0),
+    );
+  }
+
+  private getFutureDays(
+    plan: ProductionPlan,
+    today = new Date(),
+    includeSundayOverride?: boolean,
+  ): number[] {
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
+    const includeSunday = includeSundayOverride ?? this.planIncludesSunday(plan);
+    const startDay =
+      plan.year > currentYear ||
+      (plan.year === currentYear && plan.month > currentMonth)
+        ? 1
+        : plan.year === currentYear && plan.month === currentMonth
+          ? currentDay + 1
+          : 32;
+
+    let lastDay = new Date(plan.year, plan.month, 0).getDate();
+    const deadline: string | null = (plan.line as any)?.deadline ?? null;
+    if (deadline) {
+      const etd = new Date(deadline);
+      const etdYear = etd.getFullYear();
+      const etdMonth = etd.getMonth() + 1;
+      if (etdYear === plan.year && etdMonth === plan.month) {
+        lastDay = Math.min(lastDay, etd.getDate());
+      }
+    }
+
+    const days: number[] = [];
+    for (let day = startDay; day <= lastDay; day += 1) {
+      if (!includeSunday && this.isSunday(plan.year, plan.month, day)) continue;
+      days.push(day);
+    }
+    return days;
+  }
+
+  private getForecastStartDate(
+    plan: ProductionPlan,
+    futureDays: number[],
+    today: Date,
+  ): string {
+    if (futureDays.length > 0) {
+      return `${plan.year}-${String(plan.month).padStart(2, '0')}-${String(
+        futureDays[0],
+      ).padStart(2, '0')}`;
+    }
+    return this.formatLocalDate(today);
+  }
+
+  async forecast(
+    planId: string,
+    assumedDailyTarget: number,
+    mode:
+      | 'average-actual-rate'
+      | 'compensate-deficit'
+      | 'reduce-pressure'
+      | 'shorten-time' = 'shorten-time',
+    includeSundayOverride?: boolean,
+  ): Promise<ForecastResult> {
+    const plan = await this.findOne(planId);
+    const totalActual = (plan.dailyPlans || []).reduce(
+      (sum, row) => sum + Number(row.actualQty || 0),
+      0,
+    );
+    const today = new Date();
+    const deadline: string | null = (plan.line as any)?.deadline ?? null;
+    const includeSunday = includeSundayOverride ?? this.planIncludesSunday(plan);
+    const futureDays = this.getFutureDays(plan, today, includeSunday);
+    return computeForecast({
+      plannedQuantity: Number(plan.plannedQuantity || 0),
+      totalActual,
+      assumedDailyTarget: Number(assumedDailyTarget || 0),
+      mode,
+      etdDate: deadline ? new Date(deadline).toISOString().slice(0, 10) : null,
+      todayDate: this.formatLocalDate(today),
+      forecastStartDate: this.getForecastStartDate(plan, futureDays, today),
+      includeSunday,
+      futureDays,
+      dailyRows: (plan.dailyPlans || []).map((row) => ({
+        day: row.day,
+        plannedQty: row.plannedQty,
+        actualQty: row.actualQty,
+        isManualOverride: row.isManualOverride,
+      })),
+    });
+  }
+
+  async applyRedistribution(
+    planId: string,
+    mode: 'compensate-deficit' | 'reduce-pressure' | 'shorten-time',
+    assumedDailyTarget?: number,
+    includeSundayOverride?: boolean,
+  ): Promise<DailyPlan[]> {
+    const plan = await this.findOne(planId);
+    const futureDays = this.getFutureDays(plan, new Date(), includeSundayOverride);
+    const totalActual = (plan.dailyPlans || []).reduce(
+      (sum, row) => sum + Number(row.actualQty || 0),
+      0,
+    );
+    const remaining = Math.max(
+      0,
+      Number(plan.plannedQuantity || 0) - totalActual,
+    );
+    const target = mode === 'shorten-time'
+      ? Number(assumedDailyTarget || 0)
+      : futureDays.length > 0
+        ? Math.ceil(remaining / futureDays.length)
+        : 0;
+    const forecast = await this.forecast(
+      planId,
+      target,
+      mode,
+      includeSundayOverride,
+    );
+    const rows = forecast.redistributedRows.map((row) => ({
+      day: row.day,
+      plannedQty: row.plannedQty,
+      actualQty: plan.dailyPlans?.find((daily) => daily.day === row.day)?.actualQty ?? 0,
+      isManualOverride: true,
+    }));
+    const saved = await this.bulkUpsertDailyPlans(planId, rows);
     this.sse.emit(planId);
     return saved;
   }
