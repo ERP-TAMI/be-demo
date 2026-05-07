@@ -4,7 +4,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { Repository, DataSource, IsNull } from 'typeorm';
 import { Bom, BomStatus } from './entities/bom.entity';
 import { BomLine } from './entities/bom-line.entity';
 import {
@@ -29,10 +29,26 @@ export class BomsService {
     const where: { poId?: string; lineId?: string } = {};
     if (filters?.poId) where.poId = filters.poId;
     if (filters?.lineId) where.lineId = filters.lineId;
-    return this.bomRepo.find({
+    const boms = await this.bomRepo.find({
       where,
       relations: ['bomLines'],
       order: { createdAt: 'DESC', bomLines: { createdAt: 'ASC' } },
+    });
+    const colorBomKeys = new Set(
+      boms
+        .filter((bom) => !!bom.colorId)
+        .map((bom) => `${bom.lineId}:${bom.version || 1}`),
+    );
+
+    return boms.filter((bom) => {
+      const isEmptyPlaceholder =
+        bom.status === BomStatus.DRAFT &&
+        !bom.colorId &&
+        !bom.colorName &&
+        (bom.bomLines || []).length === 0;
+
+      if (!isEmptyPlaceholder) return true;
+      return !colorBomKeys.has(`${bom.lineId}:${bom.version || 1}`);
     });
   }
 
@@ -111,37 +127,43 @@ export class BomsService {
       return { summary: [], detail: [], sizeLabels: [], bomCount: 0 };
     }
 
-    // ── 2. Load size breakdown for each po_line ───────────────────────
+    // ── 2. Load size breakdown for each po_line / color ───────────────
     const lineIds = [...new Set(boms.map((b) => b.lineId))];
 
     // Raw query: line_colors + line_color_sizes
     const sizeRows: Array<{
       line_id: string;
+      color_id: string;
       size_label: string;
       qty: string;
     }> = await this.dataSource.query(
       `
       SELECT
         lc.line_id,
+        lc.id AS color_id,
         lcs.size_label,
         SUM(lcs.quantity)::int AS qty
       FROM line_colors lc
       JOIN line_color_sizes lcs ON lcs.color_id = lc.id
       WHERE lc.line_id = ANY($1)
-      GROUP BY lc.line_id, lcs.size_label
-      ORDER BY lc.line_id, lcs.size_label
+      GROUP BY lc.line_id, lc.id, lcs.size_label
+      ORDER BY lc.line_id, lc.id, lcs.size_label
       `,
       [lineIds],
     );
 
     // Build: lineId → { sizeLabel: qty }
     const lineSizeMap: Record<string, Record<string, number>> = {};
-    const lineTotalMap: Record<string, number> = {};
+    const colorSizeMap: Record<string, Record<string, number>> = {};
     for (const row of sizeRows) {
       if (!lineSizeMap[row.line_id]) lineSizeMap[row.line_id] = {};
+      const colorKey = `${row.line_id}:${row.color_id}`;
+      if (!colorSizeMap[colorKey]) colorSizeMap[colorKey] = {};
       const qty = parseInt(String(row.qty), 10);
-      lineSizeMap[row.line_id][row.size_label] = qty;
-      lineTotalMap[row.line_id] = (lineTotalMap[row.line_id] ?? 0) + qty;
+      lineSizeMap[row.line_id][row.size_label] =
+        (lineSizeMap[row.line_id][row.size_label] ?? 0) + qty;
+      colorSizeMap[colorKey][row.size_label] =
+        (colorSizeMap[colorKey][row.size_label] ?? 0) + qty;
     }
 
     // ── 3. Aggregate per material ─────────────────────────────────────
@@ -152,28 +174,33 @@ export class BomsService {
 
     for (const bom of boms) {
       const poQty = Number(bom.poQuantity ?? 0);
-      const sizeBreakdown = lineSizeMap[bom.lineId] ?? {};
-      const lineTotal = lineTotalMap[bom.lineId] ?? 0;
+      const colorKey = `${bom.lineId}:${bom.colorId}`;
+      const sizeBreakdown = bom.colorId
+        ? (colorSizeMap[colorKey] ?? lineSizeMap[bom.lineId] ?? {})
+        : (lineSizeMap[bom.lineId] ?? {});
+      const lineTotal = Object.values(sizeBreakdown).reduce(
+        (sum, qty) => sum + Number(qty),
+        0,
+      );
       const hasSizes = lineTotal > 0;
 
       for (const bl of bom.bomLines ?? []) {
         const consumption = Number(bl.consumptionPerUnit ?? 0);
-        const materialQtyTotal = poQty * consumption;
+        const materialQtyTotal = (hasSizes ? lineTotal : poQty) * consumption;
 
         const key = `${bl.materialName}||${bl.materialGroup}||${bl.unit}`;
 
         // Summary
         summaryMap[key] = (summaryMap[key] ?? 0) + materialQtyTotal;
 
-        // Detail — distribute by size ratio
+        // Detail — tính trực tiếp theo từng size
         if (!detailMap[key]) detailMap[key] = {};
 
         if (hasSizes) {
           for (const [sizeLabel, sizeQty] of Object.entries(sizeBreakdown)) {
             allSizeLabels.add(sizeLabel);
-            const ratio = sizeQty / lineTotal;
             detailMap[key][sizeLabel] =
-              (detailMap[key][sizeLabel] ?? 0) + materialQtyTotal * ratio;
+              (detailMap[key][sizeLabel] ?? 0) + consumption * Number(sizeQty);
           }
         } else {
           // No size breakdown available → put all in 'N/A'
@@ -216,10 +243,8 @@ export class BomsService {
     return { summary, detail, sizeLabels, bomCount: boms.length };
   }
 
-  private static readonly WASTAGE = 1.03;
-
   private calcLineCost(consumptionPerUnit: number, unitCost: number): number {
-    return consumptionPerUnit * BomsService.WASTAGE * unitCost;
+    return consumptionPerUnit * unitCost;
   }
 
   async create(dto: Partial<Bom>, actor?: string): Promise<Bom> {
@@ -227,6 +252,50 @@ export class BomsService {
       lines?: Partial<BomLine>[];
     };
     const lines = Array.isArray(rawLines) ? rawLines : [];
+    const version = Number(rest.version || 1);
+
+    if (rest.lineId) {
+      const duplicateQb = this.bomRepo
+        .createQueryBuilder('bom')
+        .where('bom.lineId = :lineId', { lineId: rest.lineId })
+        .andWhere('bom.version = :version', { version })
+        .andWhere('bom.status != :lockedStatus', {
+          lockedStatus: BomStatus.LOCKED,
+        });
+
+      if (rest.colorId) {
+        duplicateQb.andWhere('bom.colorId = :colorId', {
+          colorId: rest.colorId,
+        });
+      } else {
+        duplicateQb.andWhere('bom.colorId IS NULL');
+      }
+
+      const existing = await duplicateQb.getOne();
+      if (existing) {
+        return this.findOne(existing.id);
+      }
+
+      if (rest.colorId) {
+        const emptyPlaceholders = await this.bomRepo.find({
+          where: {
+            lineId: rest.lineId,
+            version,
+            status: BomStatus.DRAFT,
+            colorId: IsNull(),
+            colorName: IsNull(),
+          },
+          relations: ['bomLines'],
+        });
+        const removableIds = emptyPlaceholders
+          .filter((bom) => (bom.bomLines || []).length === 0)
+          .map((bom) => bom.id);
+
+        if (removableIds.length > 0) {
+          await this.bomRepo.delete(removableIds);
+        }
+      }
+    }
 
     const bom = this.bomRepo.create({
       ...rest,
@@ -481,8 +550,8 @@ export class BomsService {
 
   async remove(id: string): Promise<void> {
     const bom = await this.findOne(id);
-    if (bom.status === BomStatus.LOCKED) {
-      throw new BadRequestException('Cannot delete a locked BOM');
+    if (bom.status !== BomStatus.DRAFT) {
+      throw new BadRequestException('Only Draft BOM can be deleted');
     }
     await this.bomRepo.remove(bom);
   }

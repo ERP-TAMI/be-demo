@@ -69,7 +69,7 @@ async function bootstrap() {
     
     const lockResult = await poLineService.lockLine(poLine.id, 'tpkh@test.com');
     console.log(`Locked PoLine. Status is now: ${lockResult.line.status}`);
-    console.log(`Automatically created BOM: ${lockResult.bom.id} (Status: ${lockResult.bom.status})`);
+    console.log('BOM must be created manually in the BOM screen.');
 
     console.log('\n✅ All tests passed!');
   } catch (err) {

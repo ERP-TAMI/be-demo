@@ -77,7 +77,7 @@ export class BomLine {
     scale: 2,
     default: 0,
     name: 'line_cost_per_unit',
-    comment: 'consumption_per_unit * 1.03 * unit_cost (wastage 3% cố định)',
+    comment: 'consumption_per_unit * unit_cost',
   })
   lineCostPerUnit: number;
 

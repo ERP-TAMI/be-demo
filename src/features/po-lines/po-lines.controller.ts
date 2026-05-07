@@ -323,7 +323,7 @@ export class PoLinesController {
   /**
    * POST /api/v1/purchase-orders/:poId/lines/:id/lock
    * Chốt SP Final — chỉ TPKH.
-   * Tự động tạo BOM Draft V1 rỗng sau khi khoá.
+   * BOM được tạo thủ công ở màn BOM.
    */
   @Post(':id/lock')
   @UseGuards(RolesGuard)
