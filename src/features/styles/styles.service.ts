@@ -8,6 +8,7 @@ import { Repository, DeepPartial, QueryFailedError } from 'typeorm';
 import { Style, StyleStatus, StyleFileMetadata } from './entities/style.entity';
 import { StyleAs3bStep } from './entities/style-as3b-step.entity';
 import { StyleVersionLog } from './entities/style-version-log.entity';
+import * as crypto from 'crypto';
 import {
   Sample,
   SampleType,
@@ -159,21 +160,32 @@ export class StylesService {
       description: original.description,
       category: original.category,
       baseImage: original.baseImage,
+      as3bCmBaseDays: original.as3bCmBaseDays || 30,
       status: StyleStatus.DRAFT,
       createdBy: actor ?? 'system',
     });
     const saved = await this.styleRepo.save(cloned);
 
     if (original.as3bSteps && original.as3bSteps.length > 0) {
+      const idMap = new Map(
+        original.as3bSteps.map((step) => [step.id, crypto.randomUUID()]),
+      );
       const newSteps = original.as3bSteps.map((step) =>
         this.as3bRepo.create({
+          id: idMap.get(step.id),
           styleId: saved.id,
           stageId: step.stageId,
           stepName: step.stepName,
           description: step.description,
           timePerPc: step.timePerPc,
           ssv: step.ssv,
+          targetTotal: step.targetTotal,
+          note: step.note,
           orderIndex: step.orderIndex,
+          parentRowId: step.parentRowId ? idMap.get(step.parentRowId) : null,
+          isGroup: step.isGroup,
+          groupId: step.groupId,
+          groupItems: step.groupItems,
         }),
       );
       await this.as3bRepo.save(newSteps);

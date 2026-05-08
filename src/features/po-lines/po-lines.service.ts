@@ -290,6 +290,7 @@ export class PoLinesService {
         category: finalCategory,
         status: LineStatus.SAMPLING, // Tự động vào trạng thái đang thực hiện khi mapping
         versionNumber: 1,
+        as3bCmBaseDays: styleEntity?.as3bCmBaseDays || 30,
       });
       const saved = await this.lineRepo.save(line);
       await this.writeLineLog(saved, actor, PoEventType.LINE_ADDED, {
@@ -324,6 +325,8 @@ export class PoLinesService {
             description: s.description,
             timePerPc: s.timePerPc,
             ssv: s.ssv,
+            targetTotal: s.targetTotal,
+            note: s.note,
             orderIndex: s.orderIndex,
             parentRowId: s.parentRowId ? idMap.get(s.parentRowId) : null,
             isGroup: s.isGroup,
@@ -886,9 +889,14 @@ export class PoLinesService {
     lineId: string,
     stepsDto: Partial<LineAs3bStep>[],
     actor = 'system',
+    as3bCmBaseDays?: number,
   ): Promise<LineAs3bStep[]> {
     const line = await this.findOne(lineId);
     this.assertLineNotLocked(line);
+
+    if (as3bCmBaseDays) {
+      await this.lineRepo.update(lineId, { as3bCmBaseDays });
+    }
 
     // Xóa các bước cũ
     await this.stepRepo.delete({ lineId });

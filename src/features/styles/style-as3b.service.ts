@@ -39,6 +39,8 @@ export class StyleAs3bService {
       description?: string;
       timePerPc: number;
       ssv: number;
+      targetTotal?: number;
+      note?: string;
       orderIndex?: number;
     },
   ): Promise<StyleAs3bStep> {
@@ -58,14 +60,21 @@ export class StyleAs3bService {
       description?: string;
       timePerPc: number;
       ssv: number;
+      targetTotal?: number;
+      note?: string;
       orderIndex: number;
       parentRowId?: string;
       isGroup?: boolean;
       groupId?: string;
       groupItems?: any;
     }>,
+    as3bCmBaseDays?: number,
   ): Promise<StyleAs3bStep[]> {
     try {
+      if (as3bCmBaseDays) {
+        await this.styleRepo.update(styleId, { as3bCmBaseDays });
+      }
+
       // Delete existing steps
       await this.as3bRepo.delete({ styleId });
 
@@ -97,6 +106,8 @@ export class StyleAs3bService {
       description?: string;
       timePerPc?: number;
       ssv?: number;
+      targetTotal?: number;
+      note?: string;
       orderIndex?: number;
     },
   ): Promise<StyleAs3bStep> {

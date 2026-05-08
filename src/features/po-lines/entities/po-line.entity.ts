@@ -125,6 +125,9 @@ export class PoLine {
   @OneToMany(() => LineAs3bStep, (s) => s.line, { cascade: true })
   as3bSteps: LineAs3bStep[];
 
+  @Column({ type: 'int', default: 30, name: 'as3b_cm_base_days' })
+  as3bCmBaseDays: number;
+
   @OneToMany(() => LineSample, (s) => s.line, { cascade: true })
   samples: LineSample[];
 
