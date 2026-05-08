@@ -126,24 +126,32 @@ export class StylesController {
           description?: string;
           timePerPc: number;
           ssv: number;
+          targetTotal?: number;
+          note?: string;
           orderIndex: number;
         }>
       | {
+          as3bCmBaseDays?: number;
           as3bSteps?: Array<{
             stageId?: string;
             stepName: string;
             description?: string;
             timePerPc: number;
             ssv: number;
+            targetTotal?: number;
+            note?: string;
             orderIndex: number;
           }>;
         },
     @Request() req: { user?: { email: string } },
   ) {
     const steps = Array.isArray(body) ? body : (body?.as3bSteps ?? []);
+    const as3bCmBaseDays = Array.isArray(body)
+      ? undefined
+      : body?.as3bCmBaseDays;
 
     return this.as3bService
-      .createMany(id, steps)
+      .createMany(id, steps, as3bCmBaseDays)
       .then(() =>
         this.service.logActionIfAvailable(
           id,

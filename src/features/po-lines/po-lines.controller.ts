@@ -197,13 +197,18 @@ export class PoLinesController {
   @Roles(...PO_LINE_EDITOR_ROLES)
   syncSteps(
     @Param('id', ParseUUIDPipe) lineId: string,
-    @Body('steps') steps: Partial<LineAs3bStep>[],
+    @Body()
+    body: {
+      steps?: Partial<LineAs3bStep>[];
+      as3bCmBaseDays?: number;
+    },
     @Request() req: { user?: { email?: string } },
   ) {
     return this.service.syncAs3bSteps(
       lineId,
-      steps ?? [],
+      body.steps ?? [],
       req.user?.email ?? 'system',
+      body.as3bCmBaseDays,
     );
   }
 

@@ -49,7 +49,7 @@ export class Style {
   @Column({ type: 'varchar', length: 100, nullable: true })
   category: string;
 
-  @Column({ type: 'varchar', length: 500, nullable: true, name: 'base_image' })
+  @Column({ type: 'text', nullable: true, name: 'base_image' })
   baseImage: string;
 
   @Column({ type: 'uuid', nullable: true, name: 'sample_request_id' })
@@ -82,6 +82,9 @@ export class Style {
 
   @OneToMany(() => StyleAs3bStep, (step) => step.style)
   as3bSteps: StyleAs3bStep[];
+
+  @Column({ type: 'int', default: 30, name: 'as3b_cm_base_days' })
+  as3bCmBaseDays: number;
 
   @OneToMany(() => StyleProductionDoc, (doc) => doc.style)
   productionDocs: StyleProductionDoc[];

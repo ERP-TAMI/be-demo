@@ -40,6 +40,12 @@ export class LineAs3bStep {
   @Column({ type: 'decimal', precision: 8, scale: 3, default: 0 })
   ssv: number;
 
+  @Column({ type: 'int', default: 0, name: 'target_total' })
+  targetTotal: number;
+
+  @Column({ type: 'text', nullable: true })
+  note: string | null;
+
   @Column({ type: 'int', default: 0, name: 'order_index' })
   orderIndex: number;
 
