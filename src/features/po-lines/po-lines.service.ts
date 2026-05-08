@@ -36,6 +36,7 @@ import { ProductionDoc } from '../production-docs/entities/production-doc.entity
 import { ProductionDocSizeRow } from '../production-docs/entities/production-doc-size-row.entity.js';
 import { ProductionDocSection } from '../production-docs/entities/production-doc-section.entity.js';
 import { Sample } from '../samples/entities/sample.entity.js';
+import { As3bTemplateExportService } from '../as3b-template/as3b-template-export.service.js';
 
 @Injectable()
 export class PoLinesService {
@@ -80,6 +81,7 @@ export class PoLinesService {
     private readonly sizeRowRepo: Repository<ProductionDocSizeRow>,
     @InjectRepository(ProductionDocSection)
     private readonly sectionRepo: Repository<ProductionDocSection>,
+    private readonly as3bTemplateExport: As3bTemplateExportService,
   ) {}
 
   private assertLineNotLocked(line: PoLine): void {
@@ -241,6 +243,32 @@ export class PoLinesService {
     }
     
     return line;
+  }
+
+  async exportAs3bTemplate(lineId: string): Promise<{ buffer: Buffer; filename: string }> {
+    const line = await this.findOne(lineId);
+    const productImage = (line as PoLine & { structureImage?: string | null }).structureImage;
+    const buffer = await this.as3bTemplateExport.build({
+      styleCode: line.styleCode,
+      category: line.category || line.style?.category,
+      material: line.material,
+      colorName: line.colorName,
+      imageUrl: productImage || line.style?.baseImage || null,
+      cmBaseDays: line.as3bCmBaseDays || line.style?.as3bCmBaseDays || 30,
+      steps: line.as3bSteps || [],
+    });
+
+    return {
+      buffer,
+      filename: `BangCongDoan_SP_${this.sanitizeFilename(line.styleCode)}_${this.sanitizeFilename(line.colorName || 'Mau')}.xlsx`,
+    };
+  }
+
+  private sanitizeFilename(value: string): string {
+    return String(value || 'AS3B')
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .replace(/\s+/g, '_');
   }
 
   async create(
