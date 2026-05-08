@@ -11,7 +11,9 @@ import {
   ParseUUIDPipe,
   UseGuards,
   Request,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { StylesService } from './styles.service.js';
 import { StyleAs3bService } from './style-as3b.service.js';
 import { CreateStyleDto } from './dto/create-style.dto.js';
@@ -113,6 +115,23 @@ export class StylesController {
   @Get(':id/as3b')
   getAS3B(@Param('id', ParseUUIDPipe) id: string) {
     return this.as3bService.findByStyleId(id);
+  }
+
+  @Get(':id/as3b/export-template')
+  async exportAS3BTemplate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.service.exportAs3bTemplate(id);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
+    res.send(buffer);
   }
 
   @Put(':id/as3b')

@@ -15,6 +15,7 @@ import { Color } from '../colors/entities/color.entity';
 import { Sample } from '../samples/entities/sample.entity';
 import { DocFile } from '../doc-folders/entities/doc-file.entity';
 import { UploadsModule } from '../uploads/uploads.module.js';
+import { As3bTemplateExportService } from '../as3b-template/as3b-template-export.service.js';
 
 @Module({
   imports: [
@@ -35,7 +36,12 @@ import { UploadsModule } from '../uploads/uploads.module.js';
     StyleAs3bController,
     StyleProductionDocsController,
   ],
-  providers: [StylesService, StyleAs3bService, StyleProductionDocsService],
+  providers: [
+    StylesService,
+    StyleAs3bService,
+    StyleProductionDocsService,
+    As3bTemplateExportService,
+  ],
   exports: [StylesService, StyleAs3bService, StyleProductionDocsService],
 })
 export class StylesModule {}

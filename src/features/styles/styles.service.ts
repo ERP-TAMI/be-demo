@@ -17,6 +17,7 @@ import {
 import { DocFile } from '../doc-folders/entities/doc-file.entity';
 import { CreateStyleDto } from './dto/create-style.dto.js';
 import { UpdateStyleDto } from './dto/update-style.dto.js';
+import { As3bTemplateExportService } from '../as3b-template/as3b-template-export.service.js';
 
 @Injectable()
 export class StylesService {
@@ -31,6 +32,7 @@ export class StylesService {
     private readonly sampleRepo: Repository<Sample>,
     @InjectRepository(DocFile)
     private readonly docFileRepo: Repository<DocFile>,
+    private readonly as3bTemplateExport: As3bTemplateExportService,
   ) {}
 
   async findAll(filters?: {
@@ -52,6 +54,30 @@ export class StylesService {
     const style = await this.findOneInternal({ id });
     if (!style) throw new NotFoundException(`Style #${id} not found`);
     return style;
+  }
+
+  async exportAs3bTemplate(id: string): Promise<{ buffer: Buffer; filename: string }> {
+    const style = await this.findOne(id);
+    const buffer = await this.as3bTemplateExport.build({
+      styleCode: style.styleCode,
+      category: style.category,
+      material: null,
+      imageUrl: style.baseImage,
+      cmBaseDays: style.as3bCmBaseDays || 30,
+      steps: style.as3bSteps || [],
+    });
+
+    return {
+      buffer,
+      filename: `BangCongDoan_Style_${this.sanitizeFilename(style.styleCode)}.xlsx`,
+    };
+  }
+
+  private sanitizeFilename(value: string): string {
+    return String(value || 'AS3B')
+      .trim()
+      .replace(/[\\/:*?"<>|]+/g, '_')
+      .replace(/\s+/g, '_');
   }
 
   async findByCode(styleCode: string): Promise<Style | null> {

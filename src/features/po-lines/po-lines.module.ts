@@ -24,6 +24,7 @@ import { ProductionDoc } from '../production-docs/entities/production-doc.entity
 import { ProductionDocSizeRow } from '../production-docs/entities/production-doc-size-row.entity.js';
 import { ProductionDocSection } from '../production-docs/entities/production-doc-section.entity.js';
 import { Sample } from '../samples/entities/sample.entity.js';
+import { As3bTemplateExportService } from '../as3b-template/as3b-template-export.service.js';
 
 @Module({
   imports: [
@@ -52,7 +53,7 @@ import { Sample } from '../samples/entities/sample.entity.js';
     UploadsModule,
   ],
   controllers: [PoLinesController],
-  providers: [PoLinesService, ColorCardService],
+  providers: [PoLinesService, ColorCardService, As3bTemplateExportService],
   exports: [PoLinesService],
 })
 export class PoLinesModule {}

@@ -14,7 +14,9 @@ import {
   Request,
   UploadedFile,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PoLinesService } from './po-lines.service.js';
 import { LineStatus, PoLine } from './entities/po-line.entity';
@@ -41,6 +43,23 @@ export class PoLinesController {
   @Get()
   findAll(@Param('poId', ParseUUIDPipe) poId: string) {
     return this.service.findByPo(poId);
+  }
+
+  @Get(':id/as3b/export-template')
+  async exportAS3BTemplate(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Res() res: Response,
+  ) {
+    const { buffer, filename } = await this.service.exportAs3bTemplate(id);
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
+    res.send(buffer);
   }
 
   @Get(':id')
