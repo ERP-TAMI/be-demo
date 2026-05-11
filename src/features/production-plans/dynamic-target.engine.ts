@@ -291,7 +291,6 @@ export function computeForecast(input: ForecastInput): ForecastResult {
   const completion = completionDate ? parseIsoDate(completionDate) : null;
   const etd = input.etdDate ? parseIsoDate(input.etdDate) : null;
   const daysBeyondEtd = etd && completion ? diffDays(completion, etd) : null;
-  const activeDays = input.futureDays.slice(0, daysNeeded);
   let assigned = 0;
 
   return {
@@ -301,7 +300,7 @@ export function computeForecast(input: ForecastInput): ForecastResult {
     isLate: daysBeyondEtd !== null ? daysBeyondEtd > 0 : false,
     daysBeyondEtd,
     redistributedRows: input.futureDays.map((day) => {
-      if (!activeDays.includes(day)) return { day, plannedQty: 0 };
+      if (assigned >= remaining) return { day, plannedQty: 0 };
       const plannedQty = Math.min(target, Math.max(0, remaining - assigned));
       assigned += plannedQty;
       return { day, plannedQty };
