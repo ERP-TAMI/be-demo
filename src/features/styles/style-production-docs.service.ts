@@ -495,69 +495,73 @@ export class StyleProductionDocsService {
       textBlock('', 2);
     }
 
-    // ── Dynamic sections ──────────────────────────────────────────────────────
+    // ── Dynamic sections ──────────────────────────────────────────────────
     const sections = [...(doc.sections ?? [])].sort(
       (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
     );
+
+    const renderImageUrl = async (imgUrl: string) => {
+      if (!imgUrl) return;
+      try {
+        const resp = await axios.get<ArrayBuffer>(imgUrl, { responseType: 'arraybuffer' });
+        const buf = Buffer.from(resp.data);
+        const dims = imageSize(buf);
+        const origW = dims.width ?? FRAME_W_PX;
+        const origH = dims.height ?? 280;
+        const scale = Math.min(1, (FRAME_W_PX * 0.8) / origW);
+        const scaledW = Math.round(origW * scale);
+        const scaledH = Math.round(origH * scale);
+        const IMG_H = Math.max(6, Math.round((scaledH * 1.05) / 20));
+        const rowHeight = (scaledH * 1.05) / (IMG_H * 1.333);
+        const tlCol = pxToFractCol((FRAME_W_PX - scaledW) / 2);
+        const fileExt = (imgUrl.split('?')[0].split('.').pop() ?? 'jpeg').toLowerCase();
+        const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
+        const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
+        for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = rowHeight;
+        mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
+        setRangeBorder(row, 1, row + IMG_H - 1, 8, { top: true, right: true, bottom: true, left: true }, 'thin');
+        ws.addImage(imgId, { tl: { col: tlCol, row: row - 1 } as any, ext: { width: scaledW, height: scaledH } });
+        row += IMG_H;
+      } catch { /* skip */ }
+    };
+
     for (let i = 0; i < sections.length; i++) {
       const sec = sections[i];
       secTitle(`${i + 6}. ${(sec.title ?? '').toUpperCase()}:`);
       textBlock(sec.content);
 
-      if (sec.imageUrls?.length) {
-        for (const imgUrl of sec.imageUrls) {
-          if (!imgUrl) continue;
-          try {
-            const resp = await axios.get<ArrayBuffer>(imgUrl, {
-              responseType: 'arraybuffer',
+      // imageGroups mode (new format)
+      if (sec.imageGroups?.length) {
+        const groups = [...sec.imageGroups].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+        for (const group of groups) {
+          // Render heading if present
+          if (group.heading?.trim()) {
+            mergeCellsWithoutStyle(row, 1, row, 8);
+            const headingCell = ws.getRow(row).getCell(1);
+            headingCell.value = group.heading.trim();
+            applyStyle(headingCell, {
+              font: {
+                name: 'Times New Roman',
+                bold: true,
+                underline: true,
+                color: { argb: group.headingColor === 'black' ? 'FF000000' : 'FFFF0000' },
+                size: 13,
+              },
+              alignment: { vertical: 'middle' },
             });
-            const buf = Buffer.from(resp.data);
-            const dims2 = imageSize(buf);
-            const origW2 = dims2.width ?? FRAME_W_PX;
-            const origH2 = dims2.height ?? 280;
-            const scale2 = Math.min(1, (FRAME_W_PX * 0.8) / origW2);
-            const scaledW2 = Math.round(origW2 * scale2);
-            const scaledH2 = Math.round(origH2 * scale2);
-            const IMG_H = Math.max(6, Math.round((scaledH2 * 1.05) / 20));
-            const rowHeight2 = (scaledH2 * 1.05) / (IMG_H * 1.333);
-            const tlCol2 = pxToFractCol((FRAME_W_PX - scaledW2) / 2);
-            const fileExt = (
-              imgUrl.split('?')[0].split('.').pop() ?? 'jpeg'
-            ).toLowerCase();
-            const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
-            const imgId = wb.addImage({
-              buffer: buf as any,
-              extension: imgType,
-            });
-
-            console.log('[IMG-DEBUG-DYNAMIC]', {
-              rowStart: row,
-              rowEnd: row + IMG_H - 1,
-              tlRow: row - 1,
-              totalRowHeightPt: IMG_H * rowHeight2,
-              totalRowHeightPx: IMG_H * rowHeight2 * 1.333,
-              scaledH: scaledH2,
-            });
-
-            for (let k = 0; k < IMG_H; k++)
-              ws.getRow(row + k).height = rowHeight2;
-            mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
-            setRangeBorder(
-              row,
-              1,
-              row + IMG_H - 1,
-              8,
-              { top: true, right: true, bottom: true, left: true },
-              'thin',
-            );
-            ws.addImage(imgId, {
-              tl: { col: tlCol2, row: row - 1 } as any,
-              ext: { width: scaledW2, height: scaledH2 },
-            });
-            row += IMG_H;
-          } catch {
-            /* skip */
+            setRangeBorder(row, 1, row, 8, { top: true, right: true, left: true });
+            ws.getRow(row).height = 20;
+            row++;
           }
+          // Render images in this group
+          for (const imgUrl of (group.imageUrls ?? [])) {
+            await renderImageUrl(imgUrl);
+          }
+        }
+      } else if (sec.imageUrls?.length) {
+        // Legacy flat imageUrls fallback
+        for (const imgUrl of sec.imageUrls) {
+          await renderImageUrl(imgUrl);
         }
       }
     }

@@ -74,6 +74,7 @@ export class StyleProductionDoc {
     title: string;
     content: string;
     imageUrls: string[];
+    imageGroups?: { heading: string; headingColor: string; imageUrls: string[]; orderIndex: number }[];
     orderIndex: number;
   }[];
 
