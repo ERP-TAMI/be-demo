@@ -22,6 +22,7 @@ export interface RedistributionInput {
   /** 0 = plan is in a future month (all days are future); 1-31 = today's day in current month. */
   todayDay: number;
   dailyRows: DailyRow[];
+  includeSunday: boolean;
 }
 
 export interface RedistributionRow {
@@ -58,6 +59,7 @@ export interface ForecastResult {
   averageCompletionPct?: number | null;
   forecastReason?: 'average-actual-rate' | null;
   recommendation?: 'split-workshop' | null;
+  spilloverQuantity?: number;
 }
 
 /**
@@ -67,7 +69,7 @@ export interface ForecastResult {
 export function computeRedistribution(
   input: RedistributionInput,
 ): RedistributionRow[] {
-  const { plannedQuantity, etdDay, todayDay, dailyRows } = input;
+  const { plannedQuantity, etdDay, todayDay, dailyRows, includeSunday, year, month } = input;
 
   const totalActual = dailyRows.reduce((s, r) => s + (r.actualQty ?? 0), 0);
 
@@ -88,7 +90,9 @@ export function computeRedistribution(
 
   const futureDays: number[] = [];
   for (let d = todayDay + 1; d <= etdDay; d++) {
-    if (!lockedDays.has(d)) futureDays.push(d);
+    if (lockedDays.has(d)) continue;
+    if (!includeSunday && new Date(year, month - 1, d).getDay() === 0) continue;
+    futureDays.push(d);
   }
 
   if (futureDays.length === 0) return [];
@@ -227,18 +231,21 @@ export function computeForecast(input: ForecastInput): ForecastResult {
     const daysBeyondEtd = etd && completion ? diffDays(completion, etd) : null;
     let assigned = 0;
 
+    const redistributedRows = input.futureDays.map((day) => {
+      if (assigned >= remaining) return { day, plannedQty: 0 };
+      const plannedQty = Math.min(target, Math.max(0, remaining - assigned));
+      assigned += plannedQty;
+      return { day, plannedQty };
+    });
+
     return {
       remaining,
       daysNeeded,
       completionDate,
       isLate: daysBeyondEtd !== null ? daysBeyondEtd > 0 : false,
       daysBeyondEtd,
-      redistributedRows: input.futureDays.map((day) => {
-        if (assigned >= remaining) return { day, plannedQty: 0 };
-        const plannedQty = Math.min(target, Math.max(0, remaining - assigned));
-        assigned += plannedQty;
-        return { day, plannedQty };
-      }),
+      redistributedRows,
+      spilloverQuantity: Math.max(0, remaining - assigned),
       averageActualPerDay,
       averageCompletionPct,
       forecastReason: 'average-actual-rate',
@@ -294,18 +301,21 @@ export function computeForecast(input: ForecastInput): ForecastResult {
   const activeDays = input.futureDays.slice(0, daysNeeded);
   let assigned = 0;
 
+  const redistributedRows = input.futureDays.map((day) => {
+    if (!activeDays.includes(day)) return { day, plannedQty: 0 };
+    const plannedQty = Math.min(target, Math.max(0, remaining - assigned));
+    assigned += plannedQty;
+    return { day, plannedQty };
+  });
+
   return {
     remaining,
     daysNeeded,
     completionDate,
     isLate: daysBeyondEtd !== null ? daysBeyondEtd > 0 : false,
     daysBeyondEtd,
-    redistributedRows: input.futureDays.map((day) => {
-      if (!activeDays.includes(day)) return { day, plannedQty: 0 };
-      const plannedQty = Math.min(target, Math.max(0, remaining - assigned));
-      assigned += plannedQty;
-      return { day, plannedQty };
-    }),
+    redistributedRows,
+    spilloverQuantity: Math.max(0, remaining - assigned),
   };
 }
 
@@ -367,12 +377,19 @@ export class DynamicTargetEngineService {
       // ETD beyond this month → keep etdDay = 31
     }
 
+    const includeSunday = dailyRows.some(
+      (row) =>
+        new Date(plan.year, plan.month - 1, row.day).getDay() === 0 &&
+        (Number(row.plannedQty || 0) > 0 || Number(row.actualQty || 0) > 0),
+    );
+
     const rows = computeRedistribution({
       plannedQuantity: plan.plannedQuantity,
       month: plan.month,
       year: plan.year,
       etdDay,
       todayDay,
+      includeSunday,
       dailyRows: dailyRows.map((r) => ({
         day: r.day,
         plannedQty: r.plannedQty,

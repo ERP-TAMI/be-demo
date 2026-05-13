@@ -362,6 +362,75 @@ export class ProductionPlansService {
     }));
     const saved = await this.bulkUpsertDailyPlans(planId, rows);
     this.sse.emit(planId);
+
+    // Handle spillover to upcoming months
+    let spillover = forecast.spilloverQuantity || 0;
+    let currentPlan = plan;
+
+    while (spillover > 0 && target > 0) {
+      let nextMonth = currentPlan.month + 1;
+      let nextYear = currentPlan.year;
+      if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear += 1;
+      }
+
+      const daysInNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+      const includeSun = includeSundayOverride ?? this.planIncludesSunday(currentPlan);
+      const nextFutureDays: number[] = [];
+      for (let d = 1; d <= daysInNextMonth; d++) {
+        if (!includeSun && this.isSunday(nextYear, nextMonth, d)) continue;
+        nextFutureDays.push(d);
+      }
+
+      let assignedInNext = 0;
+      const nextRowsData = nextFutureDays.map(day => {
+        if (assignedInNext >= spillover) return null;
+        const qty = Math.min(target, spillover - assignedInNext);
+        assignedInNext += qty;
+        return { day, qty };
+      }).filter(Boolean) as {day: number, qty: number}[];
+
+      if (assignedInNext === 0) break; // Should not happen unless no workdays
+
+      let nextPlan = await this.planRepo.findOne({
+        where: {
+          lineId: currentPlan.lineId,
+          workshopId: currentPlan.workshopId,
+          month: nextMonth,
+          year: nextYear,
+        },
+        relations: ['dailyPlans']
+      });
+
+      if (!nextPlan) {
+        nextPlan = await this.create({
+          lineId: currentPlan.lineId,
+          workshopId: currentPlan.workshopId,
+          month: nextMonth,
+          year: nextYear,
+          plannedQuantity: assignedInNext,
+          note: currentPlan.note,
+        });
+        nextPlan.dailyPlans = [];
+      } else {
+        nextPlan.plannedQuantity = Number(nextPlan.plannedQuantity || 0) + assignedInNext;
+        await this.planRepo.save(nextPlan);
+      }
+
+      const nextRows = nextRowsData.map(({day, qty}) => ({
+        day,
+        plannedQty: qty + Number(nextPlan.dailyPlans?.find(x => x.day === day)?.plannedQty || 0),
+        actualQty: nextPlan.dailyPlans?.find(x => x.day === day)?.actualQty ?? 0,
+        isManualOverride: true,
+      }));
+
+      await this.bulkUpsertDailyPlans(nextPlan.id, nextRows);
+      
+      spillover -= assignedInNext;
+      currentPlan = nextPlan;
+    }
+
     return saved;
   }
 }
