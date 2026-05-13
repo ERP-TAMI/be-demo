@@ -25,6 +25,14 @@ export class StyleProductionDocSectionDto {
   imageUrls?: string[];
 
   @IsOptional()
+  imageGroups?: {
+    heading?: string;
+    headingColor?: string;
+    imageUrls?: string[];
+    orderIndex?: number;
+  }[];
+
+  @IsOptional()
   @IsNumber()
   orderIndex?: number;
 }

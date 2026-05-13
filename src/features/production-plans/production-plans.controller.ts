@@ -124,6 +124,8 @@ export class ProductionPlansController {
         | 'reduce-pressure'
         | 'shorten-time';
       includeSunday?: boolean;
+      startDate?: string;
+      endDate?: string;
     },
   ) {
     return this.service.forecast(
@@ -131,6 +133,8 @@ export class ProductionPlansController {
       Number(body.assumedDailyTarget || 0),
       body.mode,
       body.includeSunday,
+      body.startDate,
+      body.endDate,
     );
   }
 
@@ -143,6 +147,8 @@ export class ProductionPlansController {
       mode: 'compensate-deficit' | 'reduce-pressure' | 'shorten-time';
       assumedDailyTarget?: number;
       includeSunday?: boolean;
+      startDate?: string;
+      endDate?: string;
     },
   ) {
     return this.service.applyRedistribution(
@@ -150,6 +156,25 @@ export class ProductionPlansController {
       body.mode,
       body.assumedDailyTarget,
       body.includeSunday,
+      body.startDate,
+      body.endDate,
+    );
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/transfer')
+  transferWorkshop(
+    @Param('id', ParseUUIDPipe) planId: string,
+    @Body()
+    body: {
+      newWorkshopId: string;
+      transferDate: string;
+    },
+  ) {
+    return this.service.transferWorkshop(
+      planId,
+      body.newWorkshopId,
+      body.transferDate,
     );
   }
 }

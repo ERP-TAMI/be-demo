@@ -106,6 +106,72 @@ export class ProductionPlansService {
     await this.planRepo.remove(plan);
   }
 
+  async transferWorkshop(
+    planId: string,
+    newWorkshopId: string,
+    transferDate: string,
+  ): Promise<ProductionPlan> {
+    const plan = await this.findOne(planId);
+    const originalPlannedQty = plan.plannedQuantity;
+    const totalActual = (plan.dailyPlans || []).reduce(
+      (sum, row) => sum + Number(row.actualQty || 0),
+      0,
+    );
+
+    const remainingQty = Math.max(0, originalPlannedQty - totalActual);
+
+    const tDate = new Date(transferDate);
+    const tDay = tDate.getDate();
+    const tMonth = tDate.getMonth() + 1;
+    const tYear = tDate.getFullYear();
+
+    if (tYear === plan.year && tMonth === plan.month) {
+      for (const dp of plan.dailyPlans) {
+        if (dp.day >= tDay) {
+          dp.plannedQty = 0;
+        }
+      }
+      await this.dailyRepo.save(plan.dailyPlans);
+      const newPlanQty = plan.dailyPlans.reduce((sum, dp) => sum + dp.plannedQty, 0);
+      plan.plannedQuantity = Math.max(totalActual, newPlanQty);
+      plan.endDate = transferDate; 
+      await this.planRepo.save(plan);
+    } else if (tYear < plan.year || (tYear === plan.year && tMonth < plan.month)) {
+      plan.workshopId = newWorkshopId;
+      return this.planRepo.save(plan);
+    }
+
+    if (remainingQty <= 0) return plan;
+
+    let nextPlan = await this.planRepo.findOne({
+      where: {
+        lineId: plan.lineId,
+        workshopId: newWorkshopId,
+        month: tMonth,
+        year: tYear,
+      },
+    });
+
+    if (!nextPlan) {
+      nextPlan = await this.create({
+        lineId: plan.lineId,
+        workshopId: newWorkshopId,
+        month: tMonth,
+        year: tYear,
+        plannedQuantity: remainingQty,
+        note: plan.note,
+      });
+      nextPlan.startDate = transferDate;
+      await this.planRepo.save(nextPlan);
+      nextPlan.dailyPlans = [];
+    } else {
+      nextPlan.plannedQuantity = remainingQty;
+      await this.planRepo.save(nextPlan);
+    }
+
+    return nextPlan;
+  }
+
   async upsertDailyPlan(
     planId: string,
     day: number,
@@ -249,7 +315,7 @@ export class ProductionPlansService {
     const currentMonth = today.getMonth() + 1;
     const currentDay = today.getDate();
     const includeSunday = includeSundayOverride ?? this.planIncludesSunday(plan);
-    const startDay =
+    let startDay =
       plan.year > currentYear ||
       (plan.year === currentYear && plan.month > currentMonth)
         ? 1
@@ -257,8 +323,15 @@ export class ProductionPlansService {
           ? currentDay + 1
           : 32;
 
+    if (plan.startDate) {
+      const sDate = new Date(plan.startDate);
+      if (sDate.getFullYear() === plan.year && (sDate.getMonth() + 1) === plan.month) {
+        startDay = Math.max(startDay, sDate.getDate());
+      }
+    }
+
     let lastDay = new Date(plan.year, plan.month, 0).getDate();
-    const deadline: string | null = (plan.line as any)?.deadline ?? null;
+    const deadline: string | null = plan.endDate || (plan.line as any)?.deadline || null;
     if (deadline) {
       const etd = new Date(deadline);
       const etdYear = etd.getFullYear();
@@ -298,8 +371,12 @@ export class ProductionPlansService {
       | 'reduce-pressure'
       | 'shorten-time' = 'shorten-time',
     includeSundayOverride?: boolean,
+    startDateOverride?: string,
+    endDateOverride?: string,
   ): Promise<ForecastResult> {
     const plan = await this.findOne(planId);
+    if (startDateOverride !== undefined) plan.startDate = startDateOverride;
+    if (endDateOverride !== undefined) plan.endDate = endDateOverride;
     const totalActual = (plan.dailyPlans || []).reduce(
       (sum, row) => sum + Number(row.actualQty || 0),
       0,
@@ -332,8 +409,17 @@ export class ProductionPlansService {
     mode: 'compensate-deficit' | 'reduce-pressure' | 'shorten-time',
     assumedDailyTarget?: number,
     includeSundayOverride?: boolean,
+    startDate?: string,
+    endDate?: string,
   ): Promise<DailyPlan[]> {
     const plan = await this.findOne(planId);
+    
+    let planUpdated = false;
+    if (startDate !== undefined && plan.startDate !== startDate) { plan.startDate = startDate; planUpdated = true; }
+    if (endDate !== undefined && plan.endDate !== endDate) { plan.endDate = endDate; planUpdated = true; }
+    if (planUpdated) await this.planRepo.save(plan);
+
+    const futureDays = this.getFutureDays(plan, new Date(), includeSundayOverride);
     const totalActual = (plan.dailyPlans || []).reduce(
       (sum, row) => sum + Number(row.actualQty || 0),
       0,
@@ -383,6 +469,8 @@ export class ProductionPlansService {
       target,
       mode,
       includeSundayOverride,
+      startDate,
+      endDate,
     );
     const rows = forecast.redistributedRows.map((row) => ({
       day: row.day,
@@ -392,6 +480,80 @@ export class ProductionPlansService {
     }));
     const saved = await this.bulkUpsertDailyPlans(planId, rows);
     this.sse.emit(planId);
+
+    // Handle spillover to upcoming months
+    let spillover = forecast.spilloverQuantity || 0;
+    let currentPlan = plan;
+
+    while (spillover > 0 && target > 0) {
+      let nextMonth = currentPlan.month + 1;
+      let nextYear = currentPlan.year;
+      if (nextMonth > 12) {
+        nextMonth = 1;
+        nextYear += 1;
+      }
+
+      const daysInNextMonth = new Date(nextYear, nextMonth, 0).getDate();
+      const includeSun = includeSundayOverride ?? this.planIncludesSunday(currentPlan);
+      const nextFutureDays: number[] = [];
+      for (let d = 1; d <= daysInNextMonth; d++) {
+        if (!includeSun && this.isSunday(nextYear, nextMonth, d)) continue;
+        nextFutureDays.push(d);
+      }
+
+      let assignedInNext = 0;
+      const nextRowsData = nextFutureDays.map(day => {
+        if (assignedInNext >= spillover) return null;
+        const qty = Math.min(target, spillover - assignedInNext);
+        assignedInNext += qty;
+        return { day, qty };
+      }).filter(Boolean) as {day: number, qty: number}[];
+
+      if (assignedInNext === 0) break; // Should not happen unless no workdays
+
+      let nextPlan = await this.planRepo.findOne({
+        where: {
+          lineId: currentPlan.lineId,
+          workshopId: currentPlan.workshopId,
+          month: nextMonth,
+          year: nextYear,
+        },
+        relations: ['dailyPlans']
+      });
+
+      if (!nextPlan) {
+        nextPlan = await this.create({
+          lineId: currentPlan.lineId,
+          workshopId: currentPlan.workshopId,
+          month: nextMonth,
+          year: nextYear,
+          plannedQuantity: assignedInNext,
+          note: currentPlan.note,
+        });
+        nextPlan.dailyPlans = [];
+      } else {
+        // Option B: Overwrite the target of next month with the spillover
+        nextPlan.plannedQuantity = assignedInNext;
+        await this.planRepo.save(nextPlan);
+      }
+
+      const nextRows = nextFutureDays.map(day => {
+        const rowData = nextRowsData.find(x => x.day === day);
+        const qty = rowData ? rowData.qty : 0;
+        return {
+          day,
+          plannedQty: qty,
+          actualQty: nextPlan.dailyPlans?.find(x => x.day === day)?.actualQty ?? 0,
+          isManualOverride: true,
+        };
+      });
+
+      await this.bulkUpsertDailyPlans(nextPlan.id, nextRows);
+      
+      spillover -= assignedInNext;
+      currentPlan = nextPlan;
+    }
+
     return saved;
   }
 }
