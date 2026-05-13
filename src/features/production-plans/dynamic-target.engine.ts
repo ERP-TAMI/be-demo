@@ -301,7 +301,7 @@ export function computeForecast(input: ForecastInput): ForecastResult {
   let assigned = 0;
 
   const redistributedRows = input.futureDays.map((day) => {
-    if (!activeDays.includes(day)) return { day, plannedQty: 0 };
+    if (assigned >= remaining) return { day, plannedQty: 0 };
     const plannedQty = Math.min(target, Math.max(0, remaining - assigned));
     assigned += plannedQty;
     return { day, plannedQty };
