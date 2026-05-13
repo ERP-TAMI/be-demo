@@ -298,7 +298,6 @@ export function computeForecast(input: ForecastInput): ForecastResult {
   const completion = completionDate ? parseIsoDate(completionDate) : null;
   const etd = input.etdDate ? parseIsoDate(input.etdDate) : null;
   const daysBeyondEtd = etd && completion ? diffDays(completion, etd) : null;
-  const activeDays = input.futureDays.slice(0, daysNeeded);
   let assigned = 0;
 
   const redistributedRows = input.futureDays.map((day) => {
