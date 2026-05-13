@@ -43,6 +43,12 @@ export class ProductionPlan {
   @Column({ type: 'text', nullable: true })
   note: string;
 
+  @Column({ type: 'date', nullable: true, name: 'start_date' })
+  startDate: string;
+
+  @Column({ type: 'date', nullable: true, name: 'end_date' })
+  endDate: string;
+
   @ManyToOne(() => User, { nullable: true, eager: false })
   @JoinColumn({ name: 'created_by' })
   createdBy: User;

@@ -359,9 +359,16 @@ export class DynamicTargetEngineService {
       todayDay = currentDay;
     }
 
-    // ETD from po_lines.deadline
+    if (plan.startDate) {
+      const sDate = new Date(plan.startDate);
+      if (sDate.getFullYear() === plan.year && (sDate.getMonth() + 1) === plan.month) {
+        todayDay = Math.max(todayDay, sDate.getDate() - 1);
+      }
+    }
+
+    // ETD from plan.endDate or po_lines.deadline
     let etdDay = 31;
-    const deadline: string | null = (plan.line as any)?.deadline ?? null;
+    const deadline: string | null = plan.endDate || (plan.line as any)?.deadline || null;
     if (deadline) {
       const etd = new Date(deadline);
       const etdYear = etd.getFullYear();
