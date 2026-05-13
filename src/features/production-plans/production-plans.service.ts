@@ -384,7 +384,31 @@ export class ProductionPlansService {
     const today = new Date();
     const deadline: string | null = (plan.line as any)?.deadline ?? null;
     const includeSunday = includeSundayOverride ?? this.planIncludesSunday(plan);
-    const futureDays = this.getFutureDays(plan, today, includeSunday);
+    let futureDays: number[];
+    if (mode === 'shorten-time') {
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1;
+      const currentDay = today.getDate();
+
+      const startDay =
+        plan.year > currentYear ||
+        (plan.year === currentYear && plan.month > currentMonth)
+          ? 1
+          : plan.year === currentYear && plan.month === currentMonth
+            ? currentDay + 1
+            : 32;
+
+      const lastDay = new Date(plan.year, plan.month, 0).getDate();
+
+      futureDays = [];
+      for (let day = startDay; day <= lastDay; day += 1) {
+        if (!includeSunday && this.isSunday(plan.year, plan.month, day))
+          continue;
+        futureDays.push(day);
+      }
+    } else {
+      futureDays = this.getFutureDays(plan, today, includeSunday);
+    }
     return computeForecast({
       plannedQuantity: Number(plan.plannedQuantity || 0),
       totalActual,
@@ -419,7 +443,34 @@ export class ProductionPlansService {
     if (endDate !== undefined && plan.endDate !== endDate) { plan.endDate = endDate; planUpdated = true; }
     if (planUpdated) await this.planRepo.save(plan);
 
-    const futureDays = this.getFutureDays(plan, new Date(), includeSundayOverride);
+    let futureDays: number[];
+    if (mode === 'shorten-time') {
+      const today = new Date();
+      const currentYear = today.getFullYear();
+      const currentMonth = today.getMonth() + 1;
+      const currentDay = today.getDate();
+      const includeSunday = includeSundayOverride ?? this.planIncludesSunday(plan);
+
+      const startDay =
+        plan.year > currentYear ||
+        (plan.year === currentYear && plan.month > currentMonth)
+          ? 1
+          : plan.year === currentYear && plan.month === currentMonth
+            ? currentDay + 1
+            : 32;
+
+      // For shorten-time, go to end of month (don't stop at deadline/endDate)
+      const lastDay = new Date(plan.year, plan.month, 0).getDate();
+
+      futureDays = [];
+      for (let day = startDay; day <= lastDay; day += 1) {
+        if (!includeSunday && this.isSunday(plan.year, plan.month, day))
+          continue;
+        futureDays.push(day);
+      }
+    } else {
+      futureDays = this.getFutureDays(plan, new Date(), includeSundayOverride);
+    }
     const totalActual = (plan.dailyPlans || []).reduce(
       (sum, row) => sum + Number(row.actualQty || 0),
       0,

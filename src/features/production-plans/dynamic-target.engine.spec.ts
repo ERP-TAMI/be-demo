@@ -15,6 +15,7 @@ function makeInput(
     etdDay: 20,
     todayDay: 15,
     dailyRows: [],
+    includeSunday: false,
     ...overrides,
   };
 }
