@@ -558,8 +558,16 @@ export class ProductionPlansService {
           nextPlan.dailyPlans = [];
         }
       } else {
-        nextPlan.plannedQuantity = assignedInNext;
-        await this.planRepo.save(nextPlan);
+        const totalActualInNext = (nextPlan.dailyPlans || []).reduce((sum, row) => sum + Number(row.actualQty || 0), 0);
+        
+        if (assignedInNext === 0 && totalActualInNext === 0) {
+          // If no assigned quantity and no actuals recorded, completely remove the redundant plan
+          await this.remove(nextPlan.id);
+          nextPlan = undefined; // prevent saving daily rows below
+        } else {
+          nextPlan.plannedQuantity = assignedInNext;
+          await this.planRepo.save(nextPlan);
+        }
       }
 
       if (nextPlan) {
@@ -571,7 +579,7 @@ export class ProductionPlansService {
             day,
             plannedQty: qty,
             // Only pass actualQty if we are updating existing dailyPlan, otherwise undefined (creates row if needed)
-            actualQty: nextPlan.dailyPlans?.find(x => x.day === day)?.actualQty,
+            actualQty: nextPlan!.dailyPlans?.find(x => x.day === day)?.actualQty,
             isManualOverride: true,
           };
         });
