@@ -599,7 +599,7 @@ export class PoLinesService {
     const savedLine = await this.lineRepo.save(line);
 
     await this.writeLineLog(savedLine, actor, PoEventType.LINE_STATUS_CHANGED, {
-      reason: `TPKH chốt Final — BOM sẽ được tạo thủ công ở màn BOM`,
+      reason: `TPKH chốt Final`,
       changes: [
         {
           field: 'status',

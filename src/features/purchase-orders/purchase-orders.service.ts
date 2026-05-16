@@ -198,7 +198,7 @@ export class PurchaseOrdersService {
     if (existing) {
       throw new ConflictException(`PO code "${dto.poCode}" already exists`);
     }
-    const po = this.poRepo.create({ ...dto, status: PoStatus.PENDING_RD });
+    const po = this.poRepo.create({ ...dto, status: PoStatus.IN_PROGRESS });
     const saved = await this.poRepo.save(po);
 
     await this.writeLog(saved.id, actorEmail, PoEventType.PO_CREATED);
