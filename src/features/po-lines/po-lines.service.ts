@@ -1034,14 +1034,12 @@ export class PoLinesService {
     lineIds: string[],
     actor = 'system',
   ): Promise<void> {
-    // 1. Remove existing mappings for this file (optional, depending on logic, but here we sync)
-    // Actually, usually we just add or sync. Let's sync for the given lineIds.
-    // For drag and drop, we just want to ADD to a specific line.
-
-    // If we want a simple "Add" (best for Drag & Drop):
     for (const lineId of lineIds) {
       const line = await this.findOne(lineId);
-      this.assertLineNotLocked(line);
+      // Gán file cho phép khi Final (chỉ block khi Cancelled)
+      if (line.status === LineStatus.CANCELLED) {
+        throw new ForbiddenException('Không thể gán file cho sản phẩm đã hủy.');
+      }
 
       const exists = await this.mappedFileRepo.findOne({
         where: { poFileId: fileId, lineId },

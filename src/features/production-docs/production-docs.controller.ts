@@ -61,6 +61,13 @@ export class ProductionDocsController {
     return this.service.syncFromStyle(lineId);
   }
 
+  @Post('resync-from-bom')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
+  async resyncFromBom(@Param('lineId', ParseUUIDPipe) lineId: string) {
+    return this.service.resyncSection12FromBom(lineId);
+  }
+
   @Post('upload-image')
   @UseInterceptors(
     FileInterceptor('file', {
