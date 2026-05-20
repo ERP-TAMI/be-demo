@@ -130,7 +130,7 @@ export class UploadService {
       try {
         const uploadStream = cloudinary.uploader.upload_stream(
           {
-            folder: 'erp-may/avatars',
+            folder: this.configService.get<string>('CLOUDINARY_FOLDER', 'erp-may/avatars'),
             resource_type: 'image',
             transformation: [
               { width: 400, height: 400, crop: 'fill', gravity: 'face' },

@@ -71,7 +71,7 @@ export class PurchaseOrdersController {
   @Post(':id/files')
   addFile(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
+    @Body() body: { fileKey: string; fileUrl?: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
     @Request() req: { user?: { email: string } },
   ) {
     return this.service.addFile(id, req.user?.email ?? 'system', body);
@@ -84,6 +84,15 @@ export class PurchaseOrdersController {
     @Request() req: { user?: { email: string } },
   ) {
     return this.service.removeFile(id, fileId, req.user?.email ?? 'system');
+  }
+
+  @Post(':id/lines/:lineId/mapped-files')
+  updateLineMappedFiles(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Param('lineId', ParseUUIDPipe) lineId: string,
+    @Body() body: { fileIds: string[] },
+  ) {
+    return this.service.updateLineMappedFiles(id, lineId, body.fileIds ?? []);
   }
 
   @Post(':id/finalize')

@@ -138,6 +138,9 @@ export class PoLine {
   @OneToMany(() => PoLineVersion, (v) => v.line, { cascade: false })
   versions: PoLineVersion[];
 
+  @Column({ type: 'text', nullable: true, name: 'structure_image' })
+  structureImage: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt: Date;
 }

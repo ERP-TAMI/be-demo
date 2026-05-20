@@ -14,6 +14,7 @@ import {
   UpdatePurchaseOrderDto,
 } from './dto/purchase-order.dto.js';
 import { UploadsService } from '../uploads/uploads.service.js';
+import { LineMappedFile } from '../po-lines/entities/line-mapped-file.entity';
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -24,6 +25,8 @@ export class PurchaseOrdersService {
     private readonly poFileRepo: Repository<PoFile>,
     @InjectRepository(PoVersionLog)
     private readonly logRepo: Repository<PoVersionLog>,
+    @InjectRepository(LineMappedFile)
+    private readonly mappedFileRepo: Repository<LineMappedFile>,
     private readonly uploadsService: UploadsService,
   ) {}
 
@@ -240,7 +243,7 @@ export class PurchaseOrdersService {
   async addFile(
     poId: string,
     actorEmail: string,
-    data: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
+    data: { fileKey: string; fileUrl?: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
   ): Promise<PoFile> {
     await this.findOne(poId);
 
@@ -262,7 +265,7 @@ export class PurchaseOrdersService {
 
     const poFile = this.poFileRepo.create({
       poId,
-      fileUrl: data.fileKey,
+      fileUrl: data.fileUrl || data.fileKey,
       fileName: data.originalName,
       label: (data.label as FileLabel) || FileLabel.TAI_LIEU_KHAC,
       version,
@@ -279,12 +282,58 @@ export class PurchaseOrdersService {
       changes: fileGroupId ? [{ field: 'version', before: version - 1, after: version }] : undefined,
     });
 
+    // Auto-migrate assignments: move all line mappings from previous version → new version
+    if (fileGroupId && version > 1) {
+      const prevFile = await this.poFileRepo.findOne({
+        where: { poId, fileGroupId, version: version - 1 },
+      });
+      if (prevFile) {
+        const oldMappings = await this.mappedFileRepo.find({
+          where: { poFileId: prevFile.id },
+        });
+        if (oldMappings.length > 0) {
+          await this.mappedFileRepo.delete({ poFileId: prevFile.id });
+          await this.mappedFileRepo.save(
+            oldMappings.map((m) =>
+              this.mappedFileRepo.create({ lineId: m.lineId, poFileId: saved.id }),
+            ),
+          );
+        }
+      }
+    }
+
     // Map URL for the single added file
     if (saved.fileUrl && !saved.fileUrl.startsWith('http')) {
       saved.fileUrl = await this.uploadsService.getPresignedUrl(saved.fileUrl);
     }
 
     return saved;
+  }
+
+  async updateLineMappedFiles(
+    poId: string,
+    lineId: string,
+    fileIds: string[],
+  ): Promise<void> {
+    // Validate all fileIds belong to this PO
+    const poFiles = await this.poFileRepo.find({ where: { poId } });
+    const validIds = new Set(poFiles.map((f) => f.id));
+    const safeIds = fileIds.filter((id) => validIds.has(id));
+
+    // Delete existing mappings for this line (only for PO-level files, not line-level)
+    const existing = await this.mappedFileRepo.find({ where: { lineId } });
+    if (existing.length > 0) {
+      await this.mappedFileRepo.delete({ lineId });
+    }
+
+    // Insert new mappings
+    if (safeIds.length > 0) {
+      await this.mappedFileRepo.save(
+        safeIds.map((fileId) =>
+          this.mappedFileRepo.create({ lineId, poFileId: fileId }),
+        ),
+      );
+    }
   }
 
   async removeFile(

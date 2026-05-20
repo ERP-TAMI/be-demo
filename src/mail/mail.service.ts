@@ -29,10 +29,7 @@ export class MailService {
     tempPassword: string;
   }): Promise<void> {
     const { to, fullName, tempPassword } = options;
-    const loginUrl = this.configService.get<string>(
-      'APP_URL',
-      'http://localhost:5173',
-    );
+    const loginUrl = this.configService.get<string>('APP_URL');
 
     const html = `
 <!DOCTYPE html>
@@ -112,10 +109,7 @@ export class MailService {
     newPassword: string;
   }): Promise<void> {
     const { to, fullName, newPassword } = options;
-    const loginUrl = this.configService.get<string>(
-      'APP_URL',
-      'http://localhost:5173',
-    );
+    const loginUrl = this.configService.get<string>('APP_URL');
 
     const html = `
 <!DOCTYPE html>

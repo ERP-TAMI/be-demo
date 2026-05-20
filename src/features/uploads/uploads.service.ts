@@ -1,75 +1,36 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-  DeleteObjectCommand,
-  CreateBucketCommand,
-  HeadBucketCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { v2 as cloudinary } from 'cloudinary';
+import { Readable } from 'stream';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
 
 export interface UploadResult {
-  fileKey: string; // Storage key (path in bucket)
-  fileUrl: string; // Public/presigned URL
+  fileKey: string; // Cloudinary public_id
+  fileUrl: string; // Cloudinary secure_url
   fileName: string; // Original filename
   sizeMb: number;
 }
 
 @Injectable()
-export class UploadsService implements OnModuleInit {
+export class UploadsService {
   private readonly logger = new Logger(UploadsService.name);
-  private s3: S3Client;
-  private bucket: string;
 
-  constructor(private readonly config: ConfigService) {}
-
-  onModuleInit() {
-    const endpoint = this.config.get<string>('MINIO_ENDPOINT', 'localhost');
-    const port = this.config.get<number>('MINIO_PORT', 9000);
-    const useSSL = this.config.get<string>('MINIO_USE_SSL', 'false') === 'true';
-    const accessKey = this.config.get<string>('MINIO_ACCESS_KEY', 'minioadmin');
-    const secretKey = this.config.get<string>('MINIO_SECRET_KEY', 'minioadmin');
-    this.bucket = this.config.get<string>('MINIO_BUCKET', 'erp-files');
-
-    this.s3 = new S3Client({
-      endpoint: `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`,
-      region: 'us-east-1', // MinIO ignores region but S3 SDK requires it
-      credentials: {
-        accessKeyId: accessKey,
-        secretAccessKey: secretKey,
-      },
-      forcePathStyle: true, // Required for MinIO path-style access
+  constructor(private readonly config: ConfigService) {
+    cloudinary.config({
+      cloud_name: this.config.get<string>('CLOUDINARY_CLOUD_NAME'),
+      api_key: this.config.get<string>('CLOUDINARY_API_KEY'),
+      api_secret: this.config.get<string>('CLOUDINARY_API_SECRET'),
     });
-
-    this.logger.log(
-      `MinIO client initialized → ${useSSL ? 'https' : 'http'}://${endpoint}:${port}/${this.bucket}`,
-    );
-
-    this.ensureBucket().catch((e) =>
-      this.logger.error(`Failed to ensure bucket: ${e.message}`),
-    );
-  }
-
-  private async ensureBucket() {
-    try {
-      await this.s3.send(new HeadBucketCommand({ Bucket: this.bucket }));
-      this.logger.log(`Bucket "${this.bucket}" already exists`);
-    } catch {
-      await this.s3.send(new CreateBucketCommand({ Bucket: this.bucket }));
-      this.logger.log(`Bucket "${this.bucket}" created`);
-    }
+    this.logger.log('Cloudinary initialized for file uploads');
   }
 
   /**
-   * Upload a file buffer to MinIO/S3.
+   * Upload a file buffer to Cloudinary.
    * @param folder  e.g. "po-files", "line-files", "sample-images"
    * @param originalName  original filename from client
    * @param buffer  file content
-   * @param mimeType  MIME type
+   * @param mimeType  MIME type (used for logging only)
    */
   async uploadFile(
     folder: string,
@@ -78,54 +39,54 @@ export class UploadsService implements OnModuleInit {
     mimeType: string,
   ): Promise<UploadResult> {
     const ext = extname(originalName);
-    const fileKey = `${folder}/${randomUUID()}${ext}`;
+    const publicId = `${folder}/${randomUUID()}${ext}`;
     const sizeMb = buffer.byteLength / 1_048_576;
 
-    await this.s3.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: fileKey,
-        Body: buffer,
-        ContentType: mimeType,
-        ContentDisposition: `inline; filename="${encodeURIComponent(originalName)}"`,
-      }),
+    const secureUrl = await new Promise<string>((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { public_id: publicId, resource_type: 'auto', overwrite: true },
+        (error, result) => {
+          if (error || !result?.secure_url) {
+            return reject(error ?? new Error('No secure_url from Cloudinary'));
+          }
+          resolve(result.secure_url);
+        },
+      );
+      Readable.from(buffer).pipe(stream);
+    });
+
+    this.logger.log(
+      `Uploaded: ${publicId} (${sizeMb.toFixed(2)} MB) [${mimeType}]`,
     );
 
-    const fileUrl = await this.getPresignedUrl(fileKey, 60 * 60 * 24 * 7); // 7 days
-
-    this.logger.log(`Uploaded: ${fileKey} (${sizeMb.toFixed(2)} MB)`);
-
     return {
-      fileKey,
-      fileUrl,
+      fileKey: publicId,
+      fileUrl: secureUrl,
       fileName: originalName,
       sizeMb: parseFloat(sizeMb.toFixed(3)),
     };
   }
 
   /**
-   * Generate a presigned GET URL (default 7 days).
+   * Get URL for a file. If already a full URL (Cloudinary), returns as-is.
+   * Signature kept for backwards-compatibility with callers.
    */
   async getPresignedUrl(
     fileKey: string,
-    expiresInSeconds = 604800,
+    _expiresInSeconds = 604800,
   ): Promise<string> {
-    const cmd = new GetObjectCommand({
-      Bucket: this.bucket,
-      Key: fileKey,
-      ResponseContentDisposition: 'inline',
-      ResponseCacheControl: 'public, max-age=3600',
-    });
-    return getSignedUrl(this.s3, cmd, { expiresIn: expiresInSeconds });
+    if (fileKey.startsWith('http')) return fileKey;
+    const IMAGE_EXTS = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+    const ext = extname(fileKey).toLowerCase();
+    const resourceType = IMAGE_EXTS.includes(ext) ? 'image' : 'raw';
+    return cloudinary.url(fileKey, { resource_type: resourceType, secure: true });
   }
 
   /**
-   * Delete a file from MinIO/S3.
+   * Delete a file from Cloudinary.
    */
   async deleteFile(fileKey: string): Promise<void> {
-    await this.s3.send(
-      new DeleteObjectCommand({ Bucket: this.bucket, Key: fileKey }),
-    );
+    await cloudinary.uploader.destroy(fileKey, { resource_type: 'raw' });
     this.logger.log(`Deleted: ${fileKey}`);
   }
 }

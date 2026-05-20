@@ -15,6 +15,7 @@ import { LineMappedFile } from './entities/line-mapped-file.entity';
 import { LineColorCard } from './entities/line-color-card.entity';
 import { PoVersionLog } from '../purchase-orders/entities/po-version-log.entity';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
+import { PoFile } from '../purchase-orders/entities/po-file.entity';
 import { StyleAs3bStep } from '../styles/entities/style-as3b-step.entity';
 import { Style } from '../styles/entities/style.entity';
 import { Bom } from '../boms/entities/bom.entity';
@@ -41,6 +42,7 @@ import { As3bTemplateExportService } from '../as3b-template/as3b-template-export
       LineColorCard,
       PoVersionLog,
       PurchaseOrder,
+      PoFile,
       StyleAs3bStep, // Để clone AS3B khi tạo PoLine
       Style, // Để validate Status=Active & kế thừa thông tin
       Bom, // Để tạo BOM Draft khi lock PoLine

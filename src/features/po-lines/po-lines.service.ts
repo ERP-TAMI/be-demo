@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { PoLine, LineStatus, LineCategory } from './entities/po-line.entity';
 import { PoLineVersion } from './entities/po-line-version.entity';
 import { LineColor } from './entities/line-color.entity';
@@ -19,6 +19,7 @@ import {
 import { SampleColorImage } from './entities/sample-color-image.entity';
 import { LineMappedFile } from './entities/line-mapped-file.entity';
 import { LineFile, LineFileLabel } from './entities/line-file.entity';
+import { PoFile } from '../purchase-orders/entities/po-file.entity';
 import {
   PoVersionLog,
   PoEventType,
@@ -61,6 +62,8 @@ export class PoLinesService {
     private readonly mappedFileRepo: Repository<LineMappedFile>,
     @InjectRepository(LineFile)
     private readonly lineFileRepo: Repository<LineFile>,
+    @InjectRepository(PoFile)
+    private readonly poFileRepo: Repository<PoFile>,
     @InjectRepository(PoVersionLog)
     private readonly logRepo: Repository<PoVersionLog>,
     @InjectRepository(PurchaseOrder)
@@ -550,6 +553,7 @@ export class PoLinesService {
       'colorName',
       'deadline',
       'material',
+      'structureImage',
     ];
     const changes = Object.entries(lineDto).map(([field, after]) => ({
       field,
@@ -1034,22 +1038,52 @@ export class PoLinesService {
     lineIds: string[],
     actor = 'system',
   ): Promise<void> {
+    const poFile = await this.poFileRepo.findOne({ where: { id: fileId } });
+    if (!poFile) throw new NotFoundException(`File #${fileId} not found`);
+
+    // Collect all file IDs in the same version group (if any)
+    let groupFileIds: string[] = [fileId];
+    if (poFile.fileGroupId) {
+      const siblings = await this.poFileRepo.find({
+        where: { poId, fileGroupId: poFile.fileGroupId },
+      });
+      groupFileIds = siblings.map((f) => f.id);
+    }
+
+    // Remove mappings for lines NOT in lineIds that currently have any file from this group
+    const existingMappings = await this.mappedFileRepo.find({
+      where: { poFileId: In(groupFileIds) },
+    });
+    const toRemove = existingMappings.filter((m) => !lineIds.includes(m.lineId));
+    if (toRemove.length > 0) {
+      await this.mappedFileRepo.remove(toRemove);
+    }
+
+    // For each line in lineIds, ensure only fileId is mapped (remove siblings, add if missing)
     for (const lineId of lineIds) {
       const line = await this.findOne(lineId);
-      // Gán file cho phép khi Final (chỉ block khi Cancelled)
       if (line.status === LineStatus.CANCELLED) {
         throw new ForbiddenException('Không thể gán file cho sản phẩm đã hủy.');
+      }
+
+      // Remove sibling (older version) mappings for this line
+      const siblingIds = groupFileIds.filter((id) => id !== fileId);
+      if (siblingIds.length > 0) {
+        const siblingMappings = await this.mappedFileRepo.find({
+          where: { poFileId: In(siblingIds), lineId },
+        });
+        if (siblingMappings.length > 0) {
+          await this.mappedFileRepo.remove(siblingMappings);
+        }
       }
 
       const exists = await this.mappedFileRepo.findOne({
         where: { poFileId: fileId, lineId },
       });
       if (!exists) {
-        const mapping = this.mappedFileRepo.create({
-          poFileId: fileId,
-          lineId,
-        });
-        await this.mappedFileRepo.save(mapping);
+        await this.mappedFileRepo.save(
+          this.mappedFileRepo.create({ poFileId: fileId, lineId }),
+        );
         await this.writeLineLog(line, actor, PoEventType.FILE_ASSIGNED, {
           reason: `Gán tài liệu PO vào sản phẩm`,
         });

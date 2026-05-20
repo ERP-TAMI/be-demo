@@ -20,7 +20,11 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors();
+  const corsOrigin = configService.get<string>('CORS_ORIGIN', '*');
+  app.enableCors({
+    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map((o) => o.trim()),
+    credentials: true,
+  });
 
   await app.listen(port);
   console.log(`Application is running on: http://localhost:${port}/${prefix}`);
