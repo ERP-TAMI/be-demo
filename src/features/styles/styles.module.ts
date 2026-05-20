@@ -14,6 +14,8 @@ import { StyleProductionDoc } from './entities/style-production-doc.entity';
 import { Color } from '../colors/entities/color.entity';
 import { Sample } from '../samples/entities/sample.entity';
 import { DocFile } from '../doc-folders/entities/doc-file.entity';
+import { Bom } from '../boms/entities/bom.entity';
+import { BomLine } from '../boms/entities/bom-line.entity';
 import { UploadsModule } from '../uploads/uploads.module.js';
 import { As3bTemplateExportService } from '../as3b-template/as3b-template-export.service.js';
 
@@ -27,6 +29,8 @@ import { As3bTemplateExportService } from '../as3b-template/as3b-template-export
       Color,
       Sample,
       DocFile,
+      Bom,
+      BomLine,
     ]),
     MulterModule.register({ dest: './uploads' }),
     UploadsModule,

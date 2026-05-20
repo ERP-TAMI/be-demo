@@ -9,6 +9,8 @@ import { UploadsModule } from '../uploads/uploads.module.js';
 import { PoLine } from '../po-lines/entities/po-line.entity';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
 import { StyleProductionDoc } from '../styles/entities/style-production-doc.entity';
+import { Style } from '../styles/entities/style.entity';
+import { Bom } from '../boms/entities/bom.entity';
 
 @Module({
   imports: [
@@ -19,6 +21,8 @@ import { StyleProductionDoc } from '../styles/entities/style-production-doc.enti
       PoLine,
       PurchaseOrder,
       StyleProductionDoc,
+      Style,
+      Bom,
     ]),
     UploadsModule,
   ],

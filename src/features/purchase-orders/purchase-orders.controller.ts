@@ -71,7 +71,7 @@ export class PurchaseOrdersController {
   @Post(':id/files')
   addFile(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: { fileKey: string; originalName: string; label?: string },
+    @Body() body: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
     @Request() req: { user?: { email: string } },
   ) {
     return this.service.addFile(id, req.user?.email ?? 'system', body);

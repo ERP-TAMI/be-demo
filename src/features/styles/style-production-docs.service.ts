@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
@@ -9,8 +15,10 @@ import {
   ProductionDocStatus,
 } from './entities/style-production-doc.entity';
 import { Style } from './entities/style.entity';
+import { Bom, BomStatus } from '../boms/entities/bom.entity';
 import { UpdateStyleProductionDocDto } from './dto/update-style-production-doc.dto.js';
 import { CreateStyleProductionDocDto } from './dto/create-style-production-doc.dto.js';
+import { CopyMode } from './dto/copy-production-doc.dto.js';
 
 @Injectable()
 export class StyleProductionDocsService {
@@ -19,7 +27,37 @@ export class StyleProductionDocsService {
     private readonly docRepo: Repository<StyleProductionDoc>,
     @InjectRepository(Style)
     private readonly styleRepo: Repository<Style>,
+    @InjectRepository(Bom)
+    private readonly bomRepo: Repository<Bom>,
   ) {}
+
+  /**
+   * Get deduplicated, alphabetically sorted material codes from active BOMs for a style.
+   * Falls back to materialName if masterMaterial is not linked.
+   */
+  private async getActiveBomMaterialCodes(
+    styleCode: string,
+  ): Promise<string[]> {
+    const boms = await this.bomRepo
+      .createQueryBuilder('bom')
+      .leftJoinAndSelect('bom.bomLines', 'bl')
+      .leftJoinAndSelect('bl.masterMaterial', 'mat')
+      .where('bom.styleCode = :styleCode', { styleCode })
+      .andWhere('bom.status IN (:...statuses)', { statuses: ['Approved', 'Locked'] })
+      .getMany();
+
+    const codes = new Set<string>();
+    for (const bom of boms) {
+      for (const line of bom.bomLines ?? []) {
+        const code = line.masterMaterial?.materialCode || line.materialName;
+        if (code) {
+          codes.add(code);
+        }
+      }
+    }
+
+    return [...codes].sort();
+  }
 
   async findByStyleId(styleId: string): Promise<StyleProductionDoc[]> {
     return this.docRepo.find({
@@ -45,6 +83,186 @@ export class StyleProductionDocsService {
       createdBy: dto.createdBy || 'system',
     });
     return this.docRepo.save(doc);
+  }
+
+  async createWithAutoFill(
+    styleId: string,
+    dto: CreateStyleProductionDocDto & { createdBy?: string },
+  ): Promise<StyleProductionDoc> {
+    const style = await this.styleRepo.findOne({ where: { id: styleId } });
+    if (!style) {
+      throw new NotFoundException(`Style #${styleId} not found`);
+    }
+
+    const section1ImageUrl = style.baseImage ?? null;
+    const section1Description = style.description
+      ? style.description.slice(0, 10000)
+      : null;
+
+    const materialCodes = await this.getActiveBomMaterialCodes(style.styleCode);
+    const section2Accessories =
+      materialCodes.length > 0 ? materialCodes.join('\n') : null;
+
+    const entity = Object.assign(new StyleProductionDoc(), {
+      ...dto,
+      styleId,
+      status: ProductionDocStatus.DRAFT,
+      createdBy: dto.createdBy || 'system',
+      section1ImageUrl,
+      section1Description,
+      section2Accessories,
+    });
+
+    return this.docRepo.save(entity);
+  }
+
+  /**
+   * Re-sync section1 and/or section2 from current Style + BOM data.
+   */
+  async resync(
+    docId: string,
+    options?: { sections?: ('section1' | 'section2')[]; confirmOverwrite?: boolean },
+  ): Promise<StyleProductionDoc> {
+    const doc = await this.findOne(docId);
+    const style = await this.styleRepo.findOne({ where: { id: doc.styleId } });
+    if (!style) {
+      throw new NotFoundException(`Style #${doc.styleId} not found`);
+    }
+
+    const sectionsToSync = options?.sections ?? ['section1', 'section2'];
+
+    if (sectionsToSync.includes('section1')) {
+      (doc as any).section1ImageUrl = style.baseImage ?? null;
+      (doc as any).section1Description = style.description
+        ? style.description.slice(0, 10000)
+        : null;
+    }
+
+    if (sectionsToSync.includes('section2')) {
+      const materialCodes = await this.getActiveBomMaterialCodes(style.styleCode);
+      (doc as any).section2Accessories =
+        materialCodes.length > 0 ? materialCodes.join('\n') : null;
+    }
+
+    return this.docRepo.save(doc);
+  }
+
+  /**
+   * Copy production doc to another style's technical document.
+   */
+  async copyToStyle(
+    sourceDocId: string,
+    targetStyleId: string,
+    mode: CopyMode,
+    excludeSections?: string[],
+    userRole?: string,
+    confirmOverwrite?: boolean,
+  ): Promise<StyleProductionDoc> {
+    // Fetch source doc
+    const sourceDoc = await this.docRepo.findOne({ where: { id: sourceDocId } });
+    if (!sourceDoc) {
+      throw new NotFoundException(`Production Doc #${sourceDocId} not found`);
+    }
+
+    // Fetch target style
+    const targetStyle = await this.styleRepo.findOne({ where: { id: targetStyleId } });
+    if (!targetStyle) {
+      throw new NotFoundException(`Target Style #${targetStyleId} not found`);
+    }
+
+    // Validate source !== target
+    if (sourceDoc.styleId === targetStyleId) {
+      throw new BadRequestException('Source and target styles must be different');
+    }
+
+    // Validate EXCLUDE mode: not all sections excluded
+    const allSectionKeys = ['section1', 'section2', 'section3', 'section4', 'sizeData', 'sections'];
+    if (mode === CopyMode.EXCLUDE && excludeSections) {
+      const excluded = excludeSections.filter((s) => allSectionKeys.includes(s));
+      if (excluded.length >= allSectionKeys.length) {
+        throw new BadRequestException('At least one section must be included in the copy');
+      }
+    }
+
+    // Check if target already has a production doc
+    const existingTargetDocs = await this.docRepo.find({
+      where: { styleId: targetStyleId },
+      order: { createdAt: 'DESC' },
+    });
+    const existingTargetDoc = existingTargetDocs[0] ?? null;
+
+    if (existingTargetDoc) {
+      // Check if target has non-null content
+      const hasContent =
+        existingTargetDoc.section1Description != null ||
+        existingTargetDoc.section1ImageUrl != null ||
+        existingTargetDoc.section2Accessories != null ||
+        existingTargetDoc.section3Notes != null ||
+        existingTargetDoc.section4CustomerFeedback != null ||
+        existingTargetDoc.sizeData != null ||
+        existingTargetDoc.sections != null;
+
+      if (hasContent && !confirmOverwrite) {
+        throw new ConflictException(
+          'Target style already has content. Set confirmOverwrite=true to proceed',
+        );
+      }
+
+      // TPKH-only check for completed docs
+      if (existingTargetDoc.status === ProductionDocStatus.COMPLETED && userRole !== 'TPKH') {
+        throw new ForbiddenException(
+          'TPKH authorization required to overwrite a completed document',
+        );
+      }
+    }
+
+    // Section field mapping
+    const sectionFieldMap: Record<string, string[]> = {
+      section1: ['section1Description', 'section1ImageUrl'],
+      section2: ['section2Accessories'],
+      section3: ['section3Notes'],
+      section4: ['section4CustomerFeedback'],
+      sizeData: ['sizeData'],
+      sections: ['sections'],
+    };
+
+    // Determine which sections to copy
+    const excludedSet = new Set(
+      mode === CopyMode.EXCLUDE ? (excludeSections ?? []) : [],
+    );
+
+    // Build target data
+    const targetData: Partial<StyleProductionDoc> = {};
+    for (const [sectionKey, fields] of Object.entries(sectionFieldMap)) {
+      for (const field of fields) {
+        if (excludedSet.has(sectionKey)) {
+          (targetData as any)[field] = null;
+        } else {
+          (targetData as any)[field] = (sourceDoc as any)[field];
+        }
+      }
+    }
+
+    // Set copy metadata
+    targetData.copiedFromStyleId = sourceDoc.styleId;
+    targetData.copiedAt = new Date();
+
+    if (existingTargetDoc) {
+      // Update existing doc
+      Object.assign(existingTargetDoc, targetData);
+      return this.docRepo.save(existingTargetDoc);
+    } else {
+      // Create new doc on target
+      const newDoc = Object.assign(new StyleProductionDoc(), {
+        ...targetData,
+        styleId: targetStyleId,
+        name: sourceDoc.name,
+        description: sourceDoc.description,
+        status: ProductionDocStatus.DRAFT,
+        createdBy: 'system',
+      });
+      return this.docRepo.save(newDoc);
+    }
   }
 
   async update(
@@ -495,69 +713,73 @@ export class StyleProductionDocsService {
       textBlock('', 2);
     }
 
-    // ── Dynamic sections ──────────────────────────────────────────────────────
+    // ── Dynamic sections ──────────────────────────────────────────────────
     const sections = [...(doc.sections ?? [])].sort(
       (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
     );
+
+    const renderImageUrl = async (imgUrl: string) => {
+      if (!imgUrl) return;
+      try {
+        const resp = await axios.get<ArrayBuffer>(imgUrl, { responseType: 'arraybuffer' });
+        const buf = Buffer.from(resp.data);
+        const dims = imageSize(buf);
+        const origW = dims.width ?? FRAME_W_PX;
+        const origH = dims.height ?? 280;
+        const scale = Math.min(1, (FRAME_W_PX * 0.8) / origW);
+        const scaledW = Math.round(origW * scale);
+        const scaledH = Math.round(origH * scale);
+        const IMG_H = Math.max(6, Math.round((scaledH * 1.05) / 20));
+        const rowHeight = (scaledH * 1.05) / (IMG_H * 1.333);
+        const tlCol = pxToFractCol((FRAME_W_PX - scaledW) / 2);
+        const fileExt = (imgUrl.split('?')[0].split('.').pop() ?? 'jpeg').toLowerCase();
+        const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
+        const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
+        for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = rowHeight;
+        mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
+        setRangeBorder(row, 1, row + IMG_H - 1, 8, { top: true, right: true, bottom: true, left: true }, 'thin');
+        ws.addImage(imgId, { tl: { col: tlCol, row: row - 1 } as any, ext: { width: scaledW, height: scaledH } });
+        row += IMG_H;
+      } catch { /* skip */ }
+    };
+
     for (let i = 0; i < sections.length; i++) {
       const sec = sections[i];
       secTitle(`${i + 6}. ${(sec.title ?? '').toUpperCase()}:`);
       textBlock(sec.content);
 
-      if (sec.imageUrls?.length) {
-        for (const imgUrl of sec.imageUrls) {
-          if (!imgUrl) continue;
-          try {
-            const resp = await axios.get<ArrayBuffer>(imgUrl, {
-              responseType: 'arraybuffer',
+      // imageGroups mode (new format)
+      if (sec.imageGroups?.length) {
+        const groups = [...sec.imageGroups].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+        for (const group of groups) {
+          // Render heading if present
+          if (group.heading?.trim()) {
+            mergeCellsWithoutStyle(row, 1, row, 8);
+            const headingCell = ws.getRow(row).getCell(1);
+            headingCell.value = group.heading.trim();
+            applyStyle(headingCell, {
+              font: {
+                name: 'Times New Roman',
+                bold: true,
+                underline: true,
+                color: { argb: group.headingColor === 'black' ? 'FF000000' : 'FFFF0000' },
+                size: 13,
+              },
+              alignment: { vertical: 'middle' },
             });
-            const buf = Buffer.from(resp.data);
-            const dims2 = imageSize(buf);
-            const origW2 = dims2.width ?? FRAME_W_PX;
-            const origH2 = dims2.height ?? 280;
-            const scale2 = Math.min(1, (FRAME_W_PX * 0.8) / origW2);
-            const scaledW2 = Math.round(origW2 * scale2);
-            const scaledH2 = Math.round(origH2 * scale2);
-            const IMG_H = Math.max(6, Math.round((scaledH2 * 1.05) / 20));
-            const rowHeight2 = (scaledH2 * 1.05) / (IMG_H * 1.333);
-            const tlCol2 = pxToFractCol((FRAME_W_PX - scaledW2) / 2);
-            const fileExt = (
-              imgUrl.split('?')[0].split('.').pop() ?? 'jpeg'
-            ).toLowerCase();
-            const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
-            const imgId = wb.addImage({
-              buffer: buf as any,
-              extension: imgType,
-            });
-
-            console.log('[IMG-DEBUG-DYNAMIC]', {
-              rowStart: row,
-              rowEnd: row + IMG_H - 1,
-              tlRow: row - 1,
-              totalRowHeightPt: IMG_H * rowHeight2,
-              totalRowHeightPx: IMG_H * rowHeight2 * 1.333,
-              scaledH: scaledH2,
-            });
-
-            for (let k = 0; k < IMG_H; k++)
-              ws.getRow(row + k).height = rowHeight2;
-            mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);
-            setRangeBorder(
-              row,
-              1,
-              row + IMG_H - 1,
-              8,
-              { top: true, right: true, bottom: true, left: true },
-              'thin',
-            );
-            ws.addImage(imgId, {
-              tl: { col: tlCol2, row: row - 1 } as any,
-              ext: { width: scaledW2, height: scaledH2 },
-            });
-            row += IMG_H;
-          } catch {
-            /* skip */
+            setRangeBorder(row, 1, row, 8, { top: true, right: true, left: true });
+            ws.getRow(row).height = 20;
+            row++;
           }
+          // Render images in this group
+          for (const imgUrl of (group.imageUrls ?? [])) {
+            await renderImageUrl(imgUrl);
+          }
+        }
+      } else if (sec.imageUrls?.length) {
+        // Legacy flat imageUrls fallback
+        for (const imgUrl of sec.imageUrls) {
+          await renderImageUrl(imgUrl);
         }
       }
     }
