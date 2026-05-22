@@ -86,4 +86,10 @@ export class StyleProductionDoc {
 
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt: Date;
+
+  @Column({ type: 'uuid', nullable: true, name: 'copied_from_style_id' })
+  copiedFromStyleId: string;
+
+  @Column({ type: 'timestamptz', nullable: true, name: 'copied_at' })
+  copiedAt: Date;
 }

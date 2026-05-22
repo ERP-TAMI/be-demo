@@ -198,7 +198,7 @@ export class PurchaseOrdersService {
     if (existing) {
       throw new ConflictException(`PO code "${dto.poCode}" already exists`);
     }
-    const po = this.poRepo.create({ ...dto, status: PoStatus.PENDING_RD });
+    const po = this.poRepo.create({ ...dto, status: PoStatus.IN_PROGRESS });
     const saved = await this.poRepo.save(po);
 
     await this.writeLog(saved.id, actorEmail, PoEventType.PO_CREATED);
@@ -240,20 +240,43 @@ export class PurchaseOrdersService {
   async addFile(
     poId: string,
     actorEmail: string,
-    data: { fileKey: string; originalName: string; label?: string },
+    data: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
   ): Promise<PoFile> {
     await this.findOne(poId);
+
+    // Determine version and fileGroupId
+    let version = data.version || 1;
+    const fileGroupId = data.fileGroupId || undefined;
+
+    // If fileGroupId provided, this is a new version of existing file group
+    if (fileGroupId) {
+      // Find the latest version in this group
+      const latestInGroup = await this.poFileRepo.findOne({
+        where: { poId, fileGroupId },
+        order: { version: 'DESC' },
+      });
+      if (latestInGroup) {
+        version = (latestInGroup.version || 1) + 1;
+      }
+    }
+
     const poFile = this.poFileRepo.create({
       poId,
       fileUrl: data.fileKey,
       fileName: data.originalName,
       label: (data.label as FileLabel) || FileLabel.TAI_LIEU_KHAC,
+      version,
+      fileGroupId: fileGroupId ?? undefined,
     });
 
-    const saved = await this.poFileRepo.save(poFile);
-    await this.writeLog(poId, actorEmail, PoEventType.FILE_ADDED, {
+    const saved = await this.poFileRepo.save(poFile) as unknown as PoFile;
+
+    const eventType = fileGroupId ? PoEventType.FILE_VERSION_ADDED : PoEventType.FILE_ADDED;
+    await this.writeLog(poId, actorEmail, eventType, {
       targetId: saved.id,
       targetLabel: saved.fileName,
+      reason: data.reason || undefined,
+      changes: fileGroupId ? [{ field: 'version', before: version - 1, after: version }] : undefined,
     });
 
     // Map URL for the single added file

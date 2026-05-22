@@ -22,9 +22,13 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { StyleProductionDocsService } from './style-production-docs.service.js';
 import { ProductionDocStatus } from './entities/style-production-doc.entity';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
+import { RolesGuard } from '../../common/guards/roles.guard.js';
+import { Roles } from '../../common/decorators/roles.decorator.js';
 import { UploadsService } from '../uploads/uploads.service.js';
 import { UpdateStyleProductionDocDto } from './dto/update-style-production-doc.dto.js';
 import { CreateStyleProductionDocDto } from './dto/create-style-production-doc.dto.js';
+import { CopyProductionDocDto } from './dto/copy-production-doc.dto.js';
+import { ResyncProductionDocDto } from './dto/resync-production-doc.dto.js';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp'];
@@ -43,12 +47,14 @@ export class StyleProductionDocsController {
   }
 
   @Post()
+  @UseGuards(RolesGuard)
+  @Roles('RD', 'NVKH', 'TPKH')
   create(
     @Param('styleId', ParseUUIDPipe) styleId: string,
     @Body() body: CreateStyleProductionDocDto,
     @Request() req: { user?: { email: string } },
   ) {
-    return this.service.create(styleId, {
+    return this.service.createWithAutoFill(styleId, {
       ...body,
       createdBy: req.user?.email ?? 'system',
     });
@@ -78,6 +84,39 @@ export class StyleProductionDocsController {
     @Param('docId', ParseUUIDPipe) docId: string,
   ) {
     return this.service.remove(docId);
+  }
+
+  @Patch(':docId/resync')
+  @UseGuards(RolesGuard)
+  @Roles('RD', 'NVKH', 'TPKH')
+  resync(
+    @Param('styleId', ParseUUIDPipe) styleId: string,
+    @Param('docId', ParseUUIDPipe) docId: string,
+    @Body() body: ResyncProductionDocDto,
+  ) {
+    return this.service.resync(docId, {
+      sections: body.sections,
+      confirmOverwrite: body.confirmOverwrite,
+    });
+  }
+
+  @Post(':docId/copy')
+  @UseGuards(RolesGuard)
+  @Roles('RD', 'NVKH', 'TPKH')
+  copy(
+    @Param('styleId', ParseUUIDPipe) styleId: string,
+    @Param('docId', ParseUUIDPipe) docId: string,
+    @Body() body: CopyProductionDocDto,
+    @Request() req: { user?: { role: string } },
+  ) {
+    return this.service.copyToStyle(
+      docId,
+      body.targetStyleId,
+      body.mode,
+      body.excludeSections,
+      req.user?.role,
+      body.confirmOverwrite,
+    );
   }
 
   @Post('upload-image')

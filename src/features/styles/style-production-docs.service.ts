@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  ConflictException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import ExcelJS from 'exceljs';
@@ -9,8 +15,10 @@ import {
   ProductionDocStatus,
 } from './entities/style-production-doc.entity';
 import { Style } from './entities/style.entity';
+import { Bom, BomStatus } from '../boms/entities/bom.entity';
 import { UpdateStyleProductionDocDto } from './dto/update-style-production-doc.dto.js';
 import { CreateStyleProductionDocDto } from './dto/create-style-production-doc.dto.js';
+import { CopyMode } from './dto/copy-production-doc.dto.js';
 
 @Injectable()
 export class StyleProductionDocsService {
@@ -19,7 +27,37 @@ export class StyleProductionDocsService {
     private readonly docRepo: Repository<StyleProductionDoc>,
     @InjectRepository(Style)
     private readonly styleRepo: Repository<Style>,
+    @InjectRepository(Bom)
+    private readonly bomRepo: Repository<Bom>,
   ) {}
+
+  /**
+   * Get deduplicated, alphabetically sorted material codes from active BOMs for a style.
+   * Falls back to materialName if masterMaterial is not linked.
+   */
+  private async getActiveBomMaterialCodes(
+    styleCode: string,
+  ): Promise<string[]> {
+    const boms = await this.bomRepo
+      .createQueryBuilder('bom')
+      .leftJoinAndSelect('bom.bomLines', 'bl')
+      .leftJoinAndSelect('bl.masterMaterial', 'mat')
+      .where('bom.styleCode = :styleCode', { styleCode })
+      .andWhere('bom.status IN (:...statuses)', { statuses: ['Approved', 'Locked'] })
+      .getMany();
+
+    const codes = new Set<string>();
+    for (const bom of boms) {
+      for (const line of bom.bomLines ?? []) {
+        const code = line.masterMaterial?.materialCode || line.materialName;
+        if (code) {
+          codes.add(code);
+        }
+      }
+    }
+
+    return [...codes].sort();
+  }
 
   async findByStyleId(styleId: string): Promise<StyleProductionDoc[]> {
     return this.docRepo.find({
@@ -45,6 +83,186 @@ export class StyleProductionDocsService {
       createdBy: dto.createdBy || 'system',
     });
     return this.docRepo.save(doc);
+  }
+
+  async createWithAutoFill(
+    styleId: string,
+    dto: CreateStyleProductionDocDto & { createdBy?: string },
+  ): Promise<StyleProductionDoc> {
+    const style = await this.styleRepo.findOne({ where: { id: styleId } });
+    if (!style) {
+      throw new NotFoundException(`Style #${styleId} not found`);
+    }
+
+    const section1ImageUrl = style.baseImage ?? null;
+    const section1Description = style.description
+      ? style.description.slice(0, 10000)
+      : null;
+
+    const materialCodes = await this.getActiveBomMaterialCodes(style.styleCode);
+    const section2Accessories =
+      materialCodes.length > 0 ? materialCodes.join('\n') : null;
+
+    const entity = Object.assign(new StyleProductionDoc(), {
+      ...dto,
+      styleId,
+      status: ProductionDocStatus.DRAFT,
+      createdBy: dto.createdBy || 'system',
+      section1ImageUrl,
+      section1Description,
+      section2Accessories,
+    });
+
+    return this.docRepo.save(entity);
+  }
+
+  /**
+   * Re-sync section1 and/or section2 from current Style + BOM data.
+   */
+  async resync(
+    docId: string,
+    options?: { sections?: ('section1' | 'section2')[]; confirmOverwrite?: boolean },
+  ): Promise<StyleProductionDoc> {
+    const doc = await this.findOne(docId);
+    const style = await this.styleRepo.findOne({ where: { id: doc.styleId } });
+    if (!style) {
+      throw new NotFoundException(`Style #${doc.styleId} not found`);
+    }
+
+    const sectionsToSync = options?.sections ?? ['section1', 'section2'];
+
+    if (sectionsToSync.includes('section1')) {
+      (doc as any).section1ImageUrl = style.baseImage ?? null;
+      (doc as any).section1Description = style.description
+        ? style.description.slice(0, 10000)
+        : null;
+    }
+
+    if (sectionsToSync.includes('section2')) {
+      const materialCodes = await this.getActiveBomMaterialCodes(style.styleCode);
+      (doc as any).section2Accessories =
+        materialCodes.length > 0 ? materialCodes.join('\n') : null;
+    }
+
+    return this.docRepo.save(doc);
+  }
+
+  /**
+   * Copy production doc to another style's technical document.
+   */
+  async copyToStyle(
+    sourceDocId: string,
+    targetStyleId: string,
+    mode: CopyMode,
+    excludeSections?: string[],
+    userRole?: string,
+    confirmOverwrite?: boolean,
+  ): Promise<StyleProductionDoc> {
+    // Fetch source doc
+    const sourceDoc = await this.docRepo.findOne({ where: { id: sourceDocId } });
+    if (!sourceDoc) {
+      throw new NotFoundException(`Production Doc #${sourceDocId} not found`);
+    }
+
+    // Fetch target style
+    const targetStyle = await this.styleRepo.findOne({ where: { id: targetStyleId } });
+    if (!targetStyle) {
+      throw new NotFoundException(`Target Style #${targetStyleId} not found`);
+    }
+
+    // Validate source !== target
+    if (sourceDoc.styleId === targetStyleId) {
+      throw new BadRequestException('Source and target styles must be different');
+    }
+
+    // Validate EXCLUDE mode: not all sections excluded
+    const allSectionKeys = ['section1', 'section2', 'section3', 'section4', 'sizeData', 'sections'];
+    if (mode === CopyMode.EXCLUDE && excludeSections) {
+      const excluded = excludeSections.filter((s) => allSectionKeys.includes(s));
+      if (excluded.length >= allSectionKeys.length) {
+        throw new BadRequestException('At least one section must be included in the copy');
+      }
+    }
+
+    // Check if target already has a production doc
+    const existingTargetDocs = await this.docRepo.find({
+      where: { styleId: targetStyleId },
+      order: { createdAt: 'DESC' },
+    });
+    const existingTargetDoc = existingTargetDocs[0] ?? null;
+
+    if (existingTargetDoc) {
+      // Check if target has non-null content
+      const hasContent =
+        existingTargetDoc.section1Description != null ||
+        existingTargetDoc.section1ImageUrl != null ||
+        existingTargetDoc.section2Accessories != null ||
+        existingTargetDoc.section3Notes != null ||
+        existingTargetDoc.section4CustomerFeedback != null ||
+        existingTargetDoc.sizeData != null ||
+        existingTargetDoc.sections != null;
+
+      if (hasContent && !confirmOverwrite) {
+        throw new ConflictException(
+          'Target style already has content. Set confirmOverwrite=true to proceed',
+        );
+      }
+
+      // TPKH-only check for completed docs
+      if (existingTargetDoc.status === ProductionDocStatus.COMPLETED && userRole !== 'TPKH') {
+        throw new ForbiddenException(
+          'TPKH authorization required to overwrite a completed document',
+        );
+      }
+    }
+
+    // Section field mapping
+    const sectionFieldMap: Record<string, string[]> = {
+      section1: ['section1Description', 'section1ImageUrl'],
+      section2: ['section2Accessories'],
+      section3: ['section3Notes'],
+      section4: ['section4CustomerFeedback'],
+      sizeData: ['sizeData'],
+      sections: ['sections'],
+    };
+
+    // Determine which sections to copy
+    const excludedSet = new Set(
+      mode === CopyMode.EXCLUDE ? (excludeSections ?? []) : [],
+    );
+
+    // Build target data
+    const targetData: Partial<StyleProductionDoc> = {};
+    for (const [sectionKey, fields] of Object.entries(sectionFieldMap)) {
+      for (const field of fields) {
+        if (excludedSet.has(sectionKey)) {
+          (targetData as any)[field] = null;
+        } else {
+          (targetData as any)[field] = (sourceDoc as any)[field];
+        }
+      }
+    }
+
+    // Set copy metadata
+    targetData.copiedFromStyleId = sourceDoc.styleId;
+    targetData.copiedAt = new Date();
+
+    if (existingTargetDoc) {
+      // Update existing doc
+      Object.assign(existingTargetDoc, targetData);
+      return this.docRepo.save(existingTargetDoc);
+    } else {
+      // Create new doc on target
+      const newDoc = Object.assign(new StyleProductionDoc(), {
+        ...targetData,
+        styleId: targetStyleId,
+        name: sourceDoc.name,
+        description: sourceDoc.description,
+        status: ProductionDocStatus.DRAFT,
+        createdBy: 'system',
+      });
+      return this.docRepo.save(newDoc);
+    }
   }
 
   async update(

@@ -15,6 +15,8 @@ import { SaveProductionDocDto } from './dto/save-production-doc.dto.js';
 import { LineStatus, PoLine } from '../po-lines/entities/po-line.entity';
 import { PurchaseOrder } from '../purchase-orders/entities/purchase-order.entity';
 import { StyleProductionDoc } from '../styles/entities/style-production-doc.entity';
+import { Style } from '../styles/entities/style.entity';
+import { Bom } from '../boms/entities/bom.entity';
 import { UploadsService } from '../uploads/uploads.service.js';
 
 @Injectable()
@@ -32,6 +34,10 @@ export class ProductionDocsService {
     private readonly poRepo: Repository<PurchaseOrder>,
     @InjectRepository(StyleProductionDoc)
     private readonly styleDocRepo: Repository<StyleProductionDoc>,
+    @InjectRepository(Style)
+    private readonly styleRepo: Repository<Style>,
+    @InjectRepository(Bom)
+    private readonly bomRepo: Repository<Bom>,
     private readonly uploadsService: UploadsService,
   ) {}
 
@@ -40,11 +46,8 @@ export class ProductionDocsService {
     if (!line) {
       throw new NotFoundException(`PoLine #${lineId} not found`);
     }
-    if (line.status === LineStatus.FINAL) {
-      throw new ForbiddenException(
-        'Sản phẩm đã chốt (Final). Vui lòng yêu cầu TPKH mở khóa để chỉnh sửa.',
-      );
-    }
+    // Tài liệu sản xuất vẫn cho phép chỉnh sửa khi Final
+    // Chỉ block khi PO đã chốt (check qua PO status nếu cần)
     return line;
   }
 
@@ -253,6 +256,56 @@ export class ProductionDocsService {
       await this.sectionRepo.save(sections);
     }
 
+    return this.findByLineId(lineId);
+  }
+
+  /**
+   * Resync Section 1 (image) and Section 2 (material codes)
+   * directly from PO Line's own data (structureImage + BOM by lineId).
+   */
+  async resyncSection12FromBom(lineId: string): Promise<ProductionDoc | null> {
+    const line = await this.assertLineNotLocked(lineId);
+
+    // Get BOM material codes for this specific PO Line
+    const boms = await this.bomRepo
+      .createQueryBuilder('bom')
+      .leftJoinAndSelect('bom.bomLines', 'bl')
+      .leftJoinAndSelect('bl.masterMaterial', 'mat')
+      .where('bom.lineId = :lineId', { lineId })
+      .andWhere('bom.status IN (:...statuses)', { statuses: ['Approved', 'Locked'] })
+      .getMany();
+
+    const codes = new Set<string>();
+    for (const bom of boms) {
+      for (const bomLine of bom.bomLines ?? []) {
+        const name = bomLine.materialName;
+        if (name) codes.add(name);
+      }
+    }
+    const materialNames = [...codes].sort();
+
+    // Get structure image: PO Line's own structureImage or fallback to Style baseImage
+    let imageUrl: string | null = (line as any).structureImage || null;
+    if (!imageUrl && line.styleId) {
+      const style = await this.styleRepo.findOne({ where: { id: line.styleId } });
+      imageUrl = style?.baseImage || null;
+    }
+
+    // Upsert the PO Line production doc
+    let doc = await this.docRepo.findOne({ where: { lineId } });
+    if (!doc) doc = this.docRepo.create({ lineId });
+
+    // Section 1: image from PO Line or Style
+    if (imageUrl) {
+      doc.section1ImageUrl = imageUrl;
+    }
+
+    // Section 2: from BOM material names of this PO Line
+    if (materialNames.length > 0) {
+      doc.section2PhuLieu = materialNames.join('\n');
+    }
+
+    await this.docRepo.save(doc);
     return this.findByLineId(lineId);
   }
 
