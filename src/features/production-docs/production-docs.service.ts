@@ -272,7 +272,9 @@ export class ProductionDocsService {
       .leftJoinAndSelect('bom.bomLines', 'bl')
       .leftJoinAndSelect('bl.masterMaterial', 'mat')
       .where('bom.lineId = :lineId', { lineId })
-      .andWhere('bom.status IN (:...statuses)', { statuses: ['Approved', 'Locked'] })
+      .andWhere('bom.status IN (:...statuses)', {
+        statuses: ['Approved', 'Locked'],
+      })
       .getMany();
 
     const codes = new Set<string>();
@@ -286,8 +288,13 @@ export class ProductionDocsService {
 
     // Get structure image: PO Line's own structureImage or fallback to Style baseImage
     let imageUrl: string | null = (line as any).structureImage || null;
+    if (imageUrl && !imageUrl.startsWith('http')) {
+      imageUrl = await this.uploadsService.getPresignedUrl(imageUrl);
+    }
     if (!imageUrl && line.styleId) {
-      const style = await this.styleRepo.findOne({ where: { id: line.styleId } });
+      const style = await this.styleRepo.findOne({
+        where: { id: line.styleId },
+      });
       imageUrl = style?.baseImage || null;
     }
 
@@ -344,7 +351,10 @@ export class ProductionDocsService {
     return groups
       .map((group, index) => ({
         heading: group.heading?.trim() || null,
-        headingColor: group.headingColor === 'black' ? ('black' as const) : ('red' as const),
+        headingColor:
+          group.headingColor === 'black'
+            ? ('black' as const)
+            : ('red' as const),
         imageUrls: (group.imageUrls ?? []).filter(Boolean).slice(0, 2),
         orderIndex: group.orderIndex ?? index,
       }))

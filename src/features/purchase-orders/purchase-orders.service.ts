@@ -9,11 +9,15 @@ import { Repository } from 'typeorm';
 import { PurchaseOrder, PoStatus } from './entities/purchase-order.entity';
 import { PoFile, FileLabel } from './entities/po-file.entity';
 import { PoVersionLog, PoEventType } from './entities/po-version-log.entity';
+import { LineMappedFile } from '../po-lines/entities/line-mapped-file.entity.js';
 import {
   CreatePurchaseOrderDto,
   UpdatePurchaseOrderDto,
 } from './dto/purchase-order.dto.js';
 import { UploadsService } from '../uploads/uploads.service.js';
+
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class PurchaseOrdersService {
@@ -24,6 +28,8 @@ export class PurchaseOrdersService {
     private readonly poFileRepo: Repository<PoFile>,
     @InjectRepository(PoVersionLog)
     private readonly logRepo: Repository<PoVersionLog>,
+    @InjectRepository(LineMappedFile)
+    private readonly mappedFileRepo: Repository<LineMappedFile>,
     private readonly uploadsService: UploadsService,
   ) {}
 
@@ -69,6 +75,12 @@ export class PurchaseOrdersService {
 
     await Promise.all(
       po.lines.map(async (line) => {
+        if (line.structureImage && !line.structureImage.startsWith('http')) {
+          line.structureImage = await this.uploadsService.getPresignedUrl(
+            line.structureImage,
+          );
+        }
+
         await Promise.all(
           (line.files || []).map(async (file) => {
             if (file.fileUrl && !file.fileUrl.startsWith('http')) {
@@ -117,7 +129,9 @@ export class PurchaseOrdersService {
     if (po?.lines) {
       po.lines.forEach((line) => {
         if (line.as3bSteps) {
-          line.as3bSteps.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+          line.as3bSteps.sort(
+            (a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0),
+          );
         }
       });
     }
@@ -129,7 +143,7 @@ export class PurchaseOrdersService {
 
   async findAll(): Promise<PurchaseOrder[]> {
     const pos = await this.poRepo.find({
-      order: { 
+      order: {
         createdAt: 'DESC',
       },
       relations: [
@@ -240,18 +254,29 @@ export class PurchaseOrdersService {
   async addFile(
     poId: string,
     actorEmail: string,
-    data: { fileKey: string; originalName: string; label?: string; version?: number; fileGroupId?: string; reason?: string },
+    data: {
+      fileKey: string;
+      originalName: string;
+      label?: string;
+      version?: number;
+      fileGroupId?: string;
+      reason?: string;
+    },
   ): Promise<PoFile> {
     await this.findOne(poId);
 
     // Determine version and fileGroupId
     let version = data.version || 1;
-    const fileGroupId = data.fileGroupId || undefined;
+    let latestInGroup: PoFile | null = null;
+    const fileGroupId =
+      data.fileGroupId && UUID_RE.test(data.fileGroupId)
+        ? data.fileGroupId
+        : undefined;
 
     // If fileGroupId provided, this is a new version of existing file group
     if (fileGroupId) {
       // Find the latest version in this group
-      const latestInGroup = await this.poFileRepo.findOne({
+      latestInGroup = await this.poFileRepo.findOne({
         where: { poId, fileGroupId },
         order: { version: 'DESC' },
       });
@@ -269,14 +294,47 @@ export class PurchaseOrdersService {
       fileGroupId: fileGroupId ?? undefined,
     });
 
-    const saved = await this.poFileRepo.save(poFile) as unknown as PoFile;
+    const saved = (await this.poFileRepo.save(poFile)) as unknown as PoFile;
 
-    const eventType = fileGroupId ? PoEventType.FILE_VERSION_ADDED : PoEventType.FILE_ADDED;
+    let inheritedMappingCount = 0;
+    if (latestInGroup) {
+      const previousMappings = await this.mappedFileRepo.find({
+        where: { poFileId: latestInGroup.id },
+      });
+      const inheritedLineIds = previousMappings.map((mapping) => mapping.lineId);
+
+      if (inheritedLineIds.length > 0) {
+        await this.mappedFileRepo.delete({ poFileId: latestInGroup.id });
+        await this.mappedFileRepo.save(
+          inheritedLineIds.map((lineId) =>
+            this.mappedFileRepo.create({
+              lineId,
+              poFileId: saved.id,
+            }),
+          ),
+        );
+        inheritedMappingCount = inheritedLineIds.length;
+      }
+    }
+
+    const eventType = fileGroupId
+      ? PoEventType.FILE_VERSION_ADDED
+      : PoEventType.FILE_ADDED;
     await this.writeLog(poId, actorEmail, eventType, {
       targetId: saved.id,
       targetLabel: saved.fileName,
       reason: data.reason || undefined,
-      changes: fileGroupId ? [{ field: 'version', before: version - 1, after: version }] : undefined,
+      changes: fileGroupId
+        ? [
+            { field: 'version', before: version - 1, after: version },
+            {
+              field: 'mappedFiles',
+              before: latestInGroup?.id,
+              after: saved.id,
+              inheritedCount: inheritedMappingCount,
+            },
+          ]
+        : undefined,
     });
 
     // Map URL for the single added file

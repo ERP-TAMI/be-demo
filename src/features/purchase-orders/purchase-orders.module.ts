@@ -6,10 +6,11 @@ import { PurchaseOrder } from './entities/purchase-order.entity';
 import { PoFile } from './entities/po-file.entity';
 import { PoVersionLog } from './entities/po-version-log.entity';
 import { UploadsModule } from '../uploads/uploads.module.js';
+import { LineMappedFile } from '../po-lines/entities/line-mapped-file.entity.js';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([PurchaseOrder, PoFile, PoVersionLog]),
+    TypeOrmModule.forFeature([PurchaseOrder, PoFile, PoVersionLog, LineMappedFile]),
     UploadsModule,
   ],
   controllers: [PurchaseOrdersController],

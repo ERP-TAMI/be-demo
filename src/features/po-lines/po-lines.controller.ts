@@ -89,6 +89,21 @@ export class PoLinesController {
     return this.service.update(id, body, req.user?.email ?? 'system');
   }
 
+  @Patch(':id/structure-image')
+  @UseGuards(RolesGuard)
+  @Roles(...PO_LINE_EDITOR_ROLES)
+  updateStructureImage(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body('structureImage') structureImage: string | null,
+    @Request() req: { user?: { email?: string } },
+  ) {
+    return this.service.updateStructureImage(
+      id,
+      structureImage,
+      req.user?.email ?? 'system',
+    );
+  }
+
   @Patch(':id/status')
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
@@ -137,10 +152,19 @@ export class PoLinesController {
   @Roles(...PO_LINE_EDITOR_ROLES)
   replaceColors(
     @Param('id', ParseUUIDPipe) lineId: string,
-    @Body('colors') colors: Array<{ id?: string; colorName: string; sizes: Array<{ sizeLabel: string; quantity: number }> }>,
+    @Body('colors')
+    colors: Array<{
+      id?: string;
+      colorName: string;
+      sizes: Array<{ sizeLabel: string; quantity: number }>;
+    }>,
     @Request() req: { user?: { email?: string } },
   ) {
-    return this.service.replaceColors(lineId, colors ?? [], req.user?.email ?? 'system');
+    return this.service.replaceColors(
+      lineId,
+      colors ?? [],
+      req.user?.email ?? 'system',
+    );
   }
 
   @Post('colors/:colorId/sizes')

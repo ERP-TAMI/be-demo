@@ -28,7 +28,7 @@ import {
   PoStatus,
 } from '../purchase-orders/entities/purchase-order.entity';
 import { StyleAs3bStep } from '../styles/entities/style-as3b-step.entity';
-import { Style, StyleStatus } from '../styles/entities/style.entity';
+import { Style } from '../styles/entities/style.entity';
 import { Bom, BomStatus } from '../boms/entities/bom.entity';
 import { UserRole } from '../user/entities/user.entity';
 import { StyleProductionDoc } from '../styles/entities/style-production-doc.entity.js';
@@ -237,17 +237,20 @@ export class PoLinesService {
       ],
     });
     if (!line) throw new NotFoundException(`Line #${id} not found`);
-    
+
     if (line.as3bSteps) {
       line.as3bSteps.sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
     }
-    
+
     return line;
   }
 
-  async exportAs3bTemplate(lineId: string): Promise<{ buffer: Buffer; filename: string }> {
+  async exportAs3bTemplate(
+    lineId: string,
+  ): Promise<{ buffer: Buffer; filename: string }> {
     const line = await this.findOne(lineId);
-    const productImage = (line as PoLine & { structureImage?: string | null }).structureImage;
+    const productImage = (line as PoLine & { structureImage?: string | null })
+      .structureImage;
     const buffer = await this.as3bTemplateExport.build({
       styleCode: line.styleCode,
       category: line.category || line.style?.category,
@@ -292,11 +295,6 @@ export class PoLinesService {
         inheritedStyleCode = dto.styleCode || style.styleCode;
         inheritedProductName = dto.productName || style.styleName;
         inheritedCategory = style.category ?? dto.category;
-        if (style.status !== StyleStatus.ACTIVE) {
-          throw new BadRequestException(
-            `Style "${style.styleCode}" chưa được Active. Chỉ có thể tạo sản phẩm từ Style đã Active.`,
-          );
-        }
       }
     }
 
@@ -333,170 +331,174 @@ export class PoLinesService {
       }
 
       // ── Kế thừa AS3B từ Style ──────────────────────────────────────────────
-      const styleSteps = await this.styleAs3bRepo.find({
-        where: { styleId: dto.styleId! },
-        order: { orderIndex: 'ASC' },
-      });
-      if (styleSteps.length > 0) {
-        const idMap = new Map<string, string>();
-        // First pass: generate new IDs
-        styleSteps.forEach(s => {
-          idMap.set(s.id, crypto.randomUUID());
+      if (dto.styleId) {
+        const styleSteps = await this.styleAs3bRepo.find({
+          where: { styleId: dto.styleId },
+          order: { orderIndex: 'ASC' },
         });
-        
-        const lineSteps = styleSteps.map((s) =>
-          this.stepRepo.create({
-            id: idMap.get(s.id),
-            lineId: saved.id,
-            stageId: s.stageId,
-            stepName: s.stepName,
-            description: s.description,
-            timePerPc: s.timePerPc,
-            ssv: s.ssv,
-            targetTotal: s.targetTotal,
-            note: s.note,
-            orderIndex: s.orderIndex,
-            parentRowId: s.parentRowId ? idMap.get(s.parentRowId) : null,
-            isGroup: s.isGroup,
-            groupId: s.groupId,
-            groupItems: s.groupItems,
-          }),
-        );
-        await this.stepRepo.save(lineSteps);
-        await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
-          reason: `Kế thừa AS3B từ Style ${inheritedStyleCode} (${styleSteps.length} công đoạn)`,
-        });
-      }
-
-      // ── Kế thừa Tài liệu sản xuất từ Style ───────────────────────────────
-      const styleDoc = await this.styleDocRepo.findOne({
-        where: { styleId: dto.styleId! },
-      });
-      if (styleDoc) {
-        const prodDoc = this.docRepo.create({
-          lineId: saved.id,
-          section1MoTa: styleDoc.section1Description,
-          section1ImageUrl: styleDoc.section1ImageUrl,
-          section2PhuLieu: styleDoc.section2Accessories,
-          section3LuuYTraiCat: styleDoc.section3Notes,
-          section4CommentKhachHang: styleDoc.section4CustomerFeedback,
-        });
-        const savedProdDoc = await this.docRepo.save(prodDoc);
-
-        // Clone sizeData from Style → PoLine sizeRows.
-        // Style stores images-only ({imageUrl, orderIndex}); now that the PO Line
-        // editor is also image-based, copy every entry regardless of rowName.
-        if (
-          styleDoc.sizeData &&
-          Array.isArray(styleDoc.sizeData) &&
-          styleDoc.sizeData.length > 0
-        ) {
-          const rows = styleDoc.sizeData.map((r: any, i: number) =>
-            this.sizeRowRepo.create({
-              docId: savedProdDoc.id,
-              rowName: r.rowName ?? '', // default '' — NOT NULL constraint is satisfied
-              imageUrl: r.imageUrl ?? null,
-              sValue: r.sValue ?? null,
-              mValue: r.mValue ?? null,
-              lValue: r.lValue ?? null,
-              xlValue: r.xlValue ?? null,
-              patternValue: r.patternValue ?? null,
-              tolPlusMinus: r.tolPlusMinus ?? null,
-              orderIndex: r.orderIndex ?? i,
-            }),
-          );
-          await this.sizeRowRepo.save(rows);
-        }
-
-        // Map sections
-        if (styleDoc.sections && Array.isArray(styleDoc.sections)) {
-          const sections = styleDoc.sections.map((s: any, i: number) =>
-            this.sectionRepo.create({
-              docId: savedProdDoc.id,
-              title: s.title,
-              content: s.content,
-              imageUrls: s.imageUrls,
-              imageGroups: Array.isArray(s.imageGroups)
-                ? s.imageGroups.map((group: any) => ({
-                    ...group,
-                    imageUrls: (group.imageUrls ?? []).slice(0, 2),
-                  }))
-                : s.imageUrls?.length
-                  ? Array.from(
-                      { length: Math.ceil(s.imageUrls.length / 2) },
-                      (_unused, groupIndex) => ({
-                        heading: null,
-                        headingColor: 'red',
-                        imageUrls: s.imageUrls.slice(
-                          groupIndex * 2,
-                          groupIndex * 2 + 2,
-                        ),
-                        orderIndex: groupIndex,
-                      }),
-                    )
-                  : [],
-              orderIndex: s.orderIndex ?? i,
-            }),
-          );
-          await this.sectionRepo.save(sections);
-        }
-        await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
-          reason: `Kế thừa Tài liệu sản xuất từ Style ${inheritedStyleCode}`,
-        });
-      }
-
-      // ── Kế thừa Mẫu từ Style ───────────────────────────────────────────────
-      const styleSamples = await this.styleSampleRepo.find({
-        where: { styleId: dto.styleId! },
-        order: { createdAt: 'ASC' },
-      });
-      if (styleSamples && styleSamples.length > 0) {
-        const savedLineSamples: LineSample[] = [];
-        let roundCounter = 1;
-        let totalSamplesCopied = 0;
-
-        for (let i = 0; i < styleSamples.length; i++) {
-          const s = styleSamples[i];
-
-          // Copy current (latest) sample
-          let statusEnum = LineSampleStatus.DANG_LAM;
-          if (s.status === 'Approved') statusEnum = LineSampleStatus.DA_DUYET;
-          else if (s.status === 'In_Analysis')
-            statusEnum = LineSampleStatus.CAN_CHINH_SUA;
-
-          const ls = this.sampleRepo.create({
-            lineId: saved.id,
-            round: roundCounter++,
-            sampleDate: new Date().toISOString().slice(0, 10),
-            feedback: s.analysisResult || s.description || '',
-            status: statusEnum,
+        if (styleSteps.length > 0) {
+          const idMap = new Map<string, string>();
+          // First pass: generate new IDs
+          styleSteps.forEach((s) => {
+            idMap.set(s.id, crypto.randomUUID());
           });
-          const savedLs = await this.sampleRepo.save(ls);
-          savedLineSamples.push(savedLs);
-          totalSamplesCopied++;
 
-          if (s.images && Array.isArray(s.images) && s.images.length > 0) {
-            const imgsToSave = s.images.map((imgUrl) =>
-              this.imageRepo.create({
-                sampleId: savedLs.id,
-                colorName: 'Ảnh mẫu từ Style',
-                imageUrl: imgUrl,
+          const lineSteps = styleSteps.map((s) =>
+            this.stepRepo.create({
+              id: idMap.get(s.id),
+              lineId: saved.id,
+              stageId: s.stageId,
+              stepName: s.stepName,
+              description: s.description,
+              timePerPc: s.timePerPc,
+              ssv: s.ssv,
+              targetTotal: s.targetTotal,
+              note: s.note,
+              orderIndex: s.orderIndex,
+              parentRowId: s.parentRowId ? idMap.get(s.parentRowId) : null,
+              isGroup: s.isGroup,
+              groupId: s.groupId,
+              groupItems: s.groupItems,
+            }),
+          );
+          await this.stepRepo.save(lineSteps);
+          await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
+            reason: `Kế thừa AS3B từ Style ${inheritedStyleCode} (${styleSteps.length} công đoạn)`,
+          });
+        }
+
+        // ── Kế thừa Tài liệu sản xuất từ Style ───────────────────────────────
+        const styleDoc = await this.styleDocRepo.findOne({
+          where: { styleId: dto.styleId },
+        });
+        if (styleDoc) {
+          const prodDoc = this.docRepo.create({
+            lineId: saved.id,
+            section1MoTa: styleDoc.section1Description,
+            section1ImageUrl: styleDoc.section1ImageUrl,
+            section2PhuLieu: styleDoc.section2Accessories,
+            section3LuuYTraiCat: styleDoc.section3Notes,
+            section4CommentKhachHang: styleDoc.section4CustomerFeedback,
+          });
+          const savedProdDoc = await this.docRepo.save(prodDoc);
+
+          // Clone sizeData from Style → PoLine sizeRows.
+          // Style stores images-only ({imageUrl, orderIndex}); now that the PO Line
+          // editor is also image-based, copy every entry regardless of rowName.
+          if (
+            styleDoc.sizeData &&
+            Array.isArray(styleDoc.sizeData) &&
+            styleDoc.sizeData.length > 0
+          ) {
+            const rows = styleDoc.sizeData.map((r: any, i: number) =>
+              this.sizeRowRepo.create({
+                docId: savedProdDoc.id,
+                rowName: r.rowName ?? '', // default '' — NOT NULL constraint is satisfied
+                imageUrl: r.imageUrl ?? null,
+                sValue: r.sValue ?? null,
+                mValue: r.mValue ?? null,
+                lValue: r.lValue ?? null,
+                xlValue: r.xlValue ?? null,
+                patternValue: r.patternValue ?? null,
+                tolPlusMinus: r.tolPlusMinus ?? null,
+                orderIndex: r.orderIndex ?? i,
               }),
             );
-            await this.imageRepo.save(imgsToSave);
+            await this.sizeRowRepo.save(rows);
           }
-        }
-        await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
-          reason: `Kế thừa ${totalSamplesCopied} version mẫu từ Style ${inheritedStyleCode}`,
-        });
-      }
 
-      // Đã loại bỏ luồng "Kế thừa Files từ Style" vì file sẽ được map động (mappedSource: "Từ Style Cha")
-      // nhằm tránh trùng lặp 2 luồng tài liệu.
+          // Map sections
+          if (styleDoc.sections && Array.isArray(styleDoc.sections)) {
+            const sections = styleDoc.sections.map((s: any, i: number) =>
+              this.sectionRepo.create({
+                docId: savedProdDoc.id,
+                title: s.title,
+                content: s.content,
+                imageUrls: s.imageUrls,
+                imageGroups: Array.isArray(s.imageGroups)
+                  ? s.imageGroups.map((group: any) => ({
+                      ...group,
+                      imageUrls: (group.imageUrls ?? []).slice(0, 2),
+                    }))
+                  : s.imageUrls?.length
+                    ? Array.from(
+                        { length: Math.ceil(s.imageUrls.length / 2) },
+                        (_unused, groupIndex) => ({
+                          heading: null,
+                          headingColor: 'red',
+                          imageUrls: s.imageUrls.slice(
+                            groupIndex * 2,
+                            groupIndex * 2 + 2,
+                          ),
+                          orderIndex: groupIndex,
+                        }),
+                      )
+                    : [],
+                orderIndex: s.orderIndex ?? i,
+              }),
+            );
+            await this.sectionRepo.save(sections);
+          }
+          await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
+            reason: `Kế thừa Tài liệu sản xuất từ Style ${inheritedStyleCode}`,
+          });
+        }
+
+        // ── Kế thừa Mẫu từ Style ───────────────────────────────────────────────
+        const styleSamples = await this.styleSampleRepo.find({
+          where: { styleId: dto.styleId },
+          order: { createdAt: 'ASC' },
+        });
+        if (styleSamples && styleSamples.length > 0) {
+          const savedLineSamples: LineSample[] = [];
+          let roundCounter = 1;
+          let totalSamplesCopied = 0;
+
+          for (let i = 0; i < styleSamples.length; i++) {
+            const s = styleSamples[i];
+
+            // Copy current (latest) sample
+            let statusEnum = LineSampleStatus.DANG_LAM;
+            if (s.status === 'Approved') statusEnum = LineSampleStatus.DA_DUYET;
+            else if (s.status === 'In_Analysis')
+              statusEnum = LineSampleStatus.CAN_CHINH_SUA;
+
+            const ls = this.sampleRepo.create({
+              lineId: saved.id,
+              round: roundCounter++,
+              sampleDate: new Date().toISOString().slice(0, 10),
+              feedback: s.analysisResult || s.description || '',
+              status: statusEnum,
+            });
+            const savedLs = await this.sampleRepo.save(ls);
+            savedLineSamples.push(savedLs);
+            totalSamplesCopied++;
+
+            if (s.images && Array.isArray(s.images) && s.images.length > 0) {
+              const imgsToSave = s.images.map((imgUrl) =>
+                this.imageRepo.create({
+                  sampleId: savedLs.id,
+                  colorName: 'Ảnh mẫu từ Style',
+                  imageUrl: imgUrl,
+                }),
+              );
+              await this.imageRepo.save(imgsToSave);
+            }
+          }
+          await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
+            reason: `Kế thừa ${totalSamplesCopied} version mẫu từ Style ${inheritedStyleCode}`,
+          });
+        }
+
+        // Đã loại bỏ luồng "Kế thừa Files từ Style" vì file sẽ được map động (mappedSource: "Từ Style Cha")
+        // nhằm tránh trùng lặp 2 luồng tài liệu.
+      }
 
       return saved;
     } catch (e) {
-      throw new BadRequestException(`Lỗi tạo PO Line: ${e.message}`);
+      const message =
+      e instanceof Error ? e.message : 'Unknown error';
+      throw new BadRequestException(`Lỗi tạo PO Line: ${message}`);
     }
   }
 
@@ -581,6 +583,37 @@ export class PoLinesService {
    * 2. BOM được tạo thủ công ở màn BOM
    * Business Rule: Chỉ TPKH được thực hiện.
    */
+  async updateStructureImage(
+    id: string,
+    structureImage: string | null,
+    actor = 'system',
+  ): Promise<PoLine> {
+    const line = await this.findOne(id);
+    this.assertLineNotLocked(line);
+
+    const before = line.structureImage || null;
+    line.structureImage = structureImage || null;
+    const saved = await this.lineRepo.save(line);
+
+    if (before !== saved.structureImage) {
+      await this.writeLineLog(saved, actor, PoEventType.LINE_UPDATED, {
+        reason: saved.structureImage
+          ? 'Cập nhật ảnh ráp/cấu trúc'
+          : 'Xoá ảnh ráp/cấu trúc',
+        changes: [
+          {
+            field: 'structureImage',
+            label: 'Ảnh cấu trúc SP',
+            before: before ? 'Có ảnh' : 'Chưa có ảnh',
+            after: saved.structureImage ? 'Có ảnh' : 'Chưa có ảnh',
+          },
+        ],
+      });
+    }
+
+    return saved;
+  }
+
   async lockLine(
     id: string,
     actor = 'system',
@@ -775,7 +808,7 @@ export class PoLinesService {
 
     const UUID_RE =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const validUUID = (v?: string) => v && UUID_RE.test(v) ? v : undefined;
+    const validUUID = (v?: string) => (v && UUID_RE.test(v) ? v : undefined);
 
     const existingColors = await this.colorRepo.find({
       where: { lineId },
@@ -797,7 +830,7 @@ export class PoLinesService {
     for (const colorDto of colorsPayload) {
       const existingId = validUUID(colorDto.id);
       let color = existingId
-        ? existingColors.find((c) => c.id === existingId) ?? null
+        ? (existingColors.find((c) => c.id === existingId) ?? null)
         : null;
 
       if (color) {
