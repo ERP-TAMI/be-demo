@@ -12,7 +12,7 @@ import { User } from '../../user/entities/user.entity';
 export enum FileLabel {
   PO_PDF = 'PO PDF',
   TECH_PACK = 'Tech-pack',
-  BOM_PDF = 'BOM PDF',
+  NPL_PDF = 'NPL PDF',
   HINH_MAU = 'Hình mẫu',
   TAI_LIEU_KHAC = 'Tài liệu khác',
 }

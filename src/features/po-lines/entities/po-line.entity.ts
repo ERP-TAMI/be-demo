@@ -89,6 +89,9 @@ export class PoLine {
   @Column({ type: 'varchar', length: 100, nullable: true, name: 'color_name' })
   colorName: string;
 
+  @Column({ type: 'text', nullable: true, name: 'structure_image' })
+  structureImage: string | null;
+
   /**
    * Phiên bản hiện tại của PO_Line.
    * Tự động tăng mỗi khi có thay đổi thông số — xem po_line_versions để tra lịch sử.

@@ -9,7 +9,7 @@ import {
 import { PoLine } from './po-line.entity';
 
 export enum LineFileLabel {
-  BOM_PDF = 'BOM PDF',
+  NPL_PDF = 'NPL PDF',
   TECH_PACK = 'Tech-pack',
   BAN_DICH = 'Bản dịch',
   HINH_MAU = 'Hình mẫu',
