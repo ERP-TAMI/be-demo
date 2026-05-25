@@ -10,7 +10,7 @@ async function bootstrap() {
   const port = configService.get<number>('PORT', 3000);
   const prefix = configService.get<string>('API_PREFIX', 'api/v1');
 
-  app.setGlobalPrefix(prefix);
+  app.setGlobalPrefix(prefix, { exclude: ['health'] }); // health nằm ngoài prefix
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -22,7 +22,20 @@ async function bootstrap() {
 
   app.enableCors();
 
-  await app.listen(port);
-  console.log(`Application is running on: http://localhost:${port}/${prefix}`);
+  // Graceful shutdown — Docker stop sẽ gửi SIGTERM
+  const shutdown = async (signal: string) => {
+    console.log(`[ERP] ${signal} received, shutting down...`);
+    await app.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+
+  await app.listen(port, '0.0.0.0');
+  console.log(`[ERP] Server ready → port ${port} | prefix /${prefix} | env ${process.env.NODE_ENV ?? 'development'}`);
 }
-void bootstrap();
+
+bootstrap().catch((err) => {
+  console.error('[ERP] Bootstrap failed:', err);
+  process.exit(1);
+});

@@ -680,14 +680,6 @@ export class StyleProductionDocsService {
           const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
           const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
 
-          console.log('[IMG-DEBUG]', {
-            rowStart: row,
-            rowEnd: row + IMG_H - 1,
-            tlRow: row - 1,
-            totalRowHeightPt: IMG_H * rowHeight,
-            totalRowHeightPx: IMG_H * rowHeight * 1.333,
-            scaledH,
-          });
 
           for (let k = 0; k < IMG_H; k++) ws.getRow(row + k).height = rowHeight;
           mergeCellsWithoutStyle(row, 1, row + IMG_H - 1, 8);

@@ -5,7 +5,7 @@ export class AddStructureImageToPoLines1797000000000 implements MigrationInterfa
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(
-      `ALTER TABLE "po_lines" ADD "structure_image" text`,
+      `ALTER TABLE "po_lines" ADD COLUMN IF NOT EXISTS "structure_image" text`,
     );
   }
 

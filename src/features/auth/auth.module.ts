@@ -16,13 +16,17 @@ import { MailModule } from '../../mail/mail.module.js';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'erp-may-secret'),
-        signOptions: {
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN', '60m') as any,
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = configService.get<string>('JWT_SECRET');
+        if (!secret) throw new Error('JWT_SECRET env var is required');
+        return {
+          secret,
+          signOptions: {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN', '60m') as any,
+          },
+        };
+      },
     }),
   ],
   controllers: [AuthController],

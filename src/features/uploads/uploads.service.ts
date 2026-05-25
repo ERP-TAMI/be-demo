@@ -24,6 +24,14 @@ export class UploadsService implements OnModuleInit {
   private readonly logger = new Logger(UploadsService.name);
   private s3: S3Client;
   private bucket: string;
+  /** Internal endpoint string (e.g. http://localhost:9000) — used for S3 operations */
+  private internalEndpoint: string;
+  /**
+   * Public endpoint string (e.g. http://192.168.1.100:9000) — used when rewriting
+   * presigned URLs so LAN / external clients can access the correct host.
+   * Falls back to internalEndpoint when MINIO_PUBLIC_ENDPOINT is not set.
+   */
+  private publicEndpoint: string;
 
   constructor(private readonly config: ConfigService) {}
 
@@ -35,8 +43,15 @@ export class UploadsService implements OnModuleInit {
     const secretKey = this.config.get<string>('MINIO_SECRET_KEY', 'minioadmin');
     this.bucket = this.config.get<string>('MINIO_BUCKET', 'erp-files');
 
+    this.internalEndpoint = `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`;
+    // MINIO_PUBLIC_ENDPOINT is the host:port that LAN/browser clients can reach.
+    // Example: http://192.168.1.100:9000  (server's LAN IP + MinIO port)
+    // If not set, presigned URLs will use the internal endpoint (fine for local dev).
+    this.publicEndpoint =
+      this.config.get<string>('MINIO_PUBLIC_ENDPOINT') || this.internalEndpoint;
+
     this.s3 = new S3Client({
-      endpoint: `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`,
+      endpoint: this.internalEndpoint,
       region: 'us-east-1', // MinIO ignores region but S3 SDK requires it
       credentials: {
         accessKeyId: accessKey,
@@ -46,7 +61,7 @@ export class UploadsService implements OnModuleInit {
     });
 
     this.logger.log(
-      `MinIO client initialized → ${useSSL ? 'https' : 'http'}://${endpoint}:${port}/${this.bucket}`,
+      `MinIO client initialized → internal: ${this.internalEndpoint}/${this.bucket} | public: ${this.publicEndpoint}`,
     );
 
     this.ensureBucket().catch((e) =>
@@ -105,6 +120,9 @@ export class UploadsService implements OnModuleInit {
 
   /**
    * Generate a presigned GET URL (default 7 days).
+   *
+   * The URL host is rewritten to MINIO_PUBLIC_ENDPOINT so that browser
+   * clients on the LAN (or internet) can reach the correct server.
    */
   async getPresignedUrl(
     fileKey: string,
@@ -116,7 +134,13 @@ export class UploadsService implements OnModuleInit {
       ResponseContentDisposition: 'inline',
       ResponseCacheControl: 'public, max-age=3600',
     });
-    return getSignedUrl(this.s3, cmd, { expiresIn: expiresInSeconds });
+    const url = await getSignedUrl(this.s3, cmd, { expiresIn: expiresInSeconds });
+
+    // Rewrite internal endpoint → public endpoint (important for LAN / production)
+    if (this.publicEndpoint !== this.internalEndpoint) {
+      return url.replace(this.internalEndpoint, this.publicEndpoint);
+    }
+    return url;
   }
 
   /**

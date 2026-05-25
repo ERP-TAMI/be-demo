@@ -840,13 +840,6 @@ export class ProductionDocsService {
           const imgType: 'png' | 'jpeg' = fileExt === 'png' ? 'png' : 'jpeg';
           const imgId = wb.addImage({ buffer: buf as any, extension: imgType });
 
-          console.log('[IMG-DEBUG]', {
-            rowStart: row,
-            rowEnd: row + rowsNeeded - 1,
-            rowsNeeded,
-            scaledH,
-            rowHeight: rowHeight.toFixed(2),
-          });
 
           for (let k = 0; k < rowsNeeded; k++)
             ws.getRow(row + k).height = rowHeight;
