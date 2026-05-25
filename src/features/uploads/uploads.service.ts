@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+﻿import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   S3Client,
@@ -13,9 +13,9 @@ import { randomUUID } from 'crypto';
 import { extname } from 'path';
 
 export interface UploadResult {
-  fileKey: string; // Storage key (path in bucket)
-  fileUrl: string; // Public/presigned URL
-  fileName: string; // Original filename
+  fileKey: string;
+  fileUrl: string;
+  fileName: string;
   sizeMb: number;
 }
 
@@ -23,14 +23,10 @@ export interface UploadResult {
 export class UploadsService implements OnModuleInit {
   private readonly logger = new Logger(UploadsService.name);
   private s3: S3Client;
+  /** s3Public: dung de sign presigned URL voi dung publicEndpoint */
+  private s3Public: S3Client;
   private bucket: string;
-  /** Internal endpoint string (e.g. http://localhost:9000) — used for S3 operations */
   private internalEndpoint: string;
-  /**
-   * Public endpoint string (e.g. http://192.168.1.100:9000) — used when rewriting
-   * presigned URLs so LAN / external clients can access the correct host.
-   * Falls back to internalEndpoint when MINIO_PUBLIC_ENDPOINT is not set.
-   */
   private publicEndpoint: string;
 
   constructor(private readonly config: ConfigService) {}
@@ -44,24 +40,28 @@ export class UploadsService implements OnModuleInit {
     this.bucket = this.config.get<string>('MINIO_BUCKET', 'erp-files');
 
     this.internalEndpoint = `${useSSL ? 'https' : 'http'}://${endpoint}:${port}`;
-    // MINIO_PUBLIC_ENDPOINT is the host:port that LAN/browser clients can reach.
-    // Example: http://192.168.1.100:9000  (server's LAN IP + MinIO port)
-    // If not set, presigned URLs will use the internal endpoint (fine for local dev).
     this.publicEndpoint =
       this.config.get<string>('MINIO_PUBLIC_ENDPOINT') || this.internalEndpoint;
 
+    // S3Client noi bo - dung cho upload/delete
     this.s3 = new S3Client({
       endpoint: this.internalEndpoint,
-      region: 'us-east-1', // MinIO ignores region but S3 SDK requires it
-      credentials: {
-        accessKeyId: accessKey,
-        secretAccessKey: secretKey,
-      },
-      forcePathStyle: true, // Required for MinIO path-style access
+      region: 'us-east-1',
+      credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
+      forcePathStyle: true,
+    });
+
+    // S3Client public - sign presigned URL voi dung host public
+    // Browser goi dung host -> chu ky khop -> khong bi 403
+    this.s3Public = new S3Client({
+      endpoint: this.publicEndpoint,
+      region: 'us-east-1',
+      credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
+      forcePathStyle: true,
     });
 
     this.logger.log(
-      `MinIO client initialized → internal: ${this.internalEndpoint}/${this.bucket} | public: ${this.publicEndpoint}`,
+      `MinIO client initialized -> internal: ${this.internalEndpoint}/${this.bucket} | public: ${this.publicEndpoint}`,
     );
 
     this.ensureBucket().catch((e) =>
@@ -79,13 +79,6 @@ export class UploadsService implements OnModuleInit {
     }
   }
 
-  /**
-   * Upload a file buffer to MinIO/S3.
-   * @param folder  e.g. "po-files", "line-files", "sample-images"
-   * @param originalName  original filename from client
-   * @param buffer  file content
-   * @param mimeType  MIME type
-   */
   async uploadFile(
     folder: string,
     originalName: string,
@@ -106,7 +99,7 @@ export class UploadsService implements OnModuleInit {
       }),
     );
 
-    const fileUrl = await this.getPresignedUrl(fileKey, 60 * 60 * 24 * 7); // 7 days
+    const fileUrl = await this.getPresignedUrl(fileKey, 60 * 60 * 24 * 7);
 
     this.logger.log(`Uploaded: ${fileKey} (${sizeMb.toFixed(2)} MB)`);
 
@@ -119,10 +112,8 @@ export class UploadsService implements OnModuleInit {
   }
 
   /**
-   * Generate a presigned GET URL (default 7 days).
-   *
-   * The URL host is rewritten to MINIO_PUBLIC_ENDPOINT so that browser
-   * clients on the LAN (or internet) can reach the correct server.
+   * Generate presigned URL dung s3Public.
+   * Chu ky duoc tao voi publicEndpoint -> browser truy cap dung host -> 200 OK
    */
   async getPresignedUrl(
     fileKey: string,
@@ -134,18 +125,9 @@ export class UploadsService implements OnModuleInit {
       ResponseContentDisposition: 'inline',
       ResponseCacheControl: 'public, max-age=3600',
     });
-    const url = await getSignedUrl(this.s3, cmd, { expiresIn: expiresInSeconds });
-
-    // Rewrite internal endpoint → public endpoint (important for LAN / production)
-    if (this.publicEndpoint !== this.internalEndpoint) {
-      return url.replace(this.internalEndpoint, this.publicEndpoint);
-    }
-    return url;
+    return getSignedUrl(this.s3Public, cmd, { expiresIn: expiresInSeconds });
   }
 
-  /**
-   * Delete a file from MinIO/S3.
-   */
   async deleteFile(fileKey: string): Promise<void> {
     await this.s3.send(
       new DeleteObjectCommand({ Bucket: this.bucket, Key: fileKey }),
